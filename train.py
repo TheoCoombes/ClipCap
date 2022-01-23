@@ -16,7 +16,7 @@ class CheckpointSaver(pl.Callback):
     def on_epoch_end(self, trainer: pl.Trainer, _):
         epoch = trainer.current_epoch
         if epoch % self.save_every_n_epochs == 0:
-            output_path = self.output_path / f"{self.filename_prefix}_{epoch}.pt"
+            output_path = self.output_path / f"{self.filename_prefix}_epoch_{epoch}.pt"
             trainer.save_checkpoint(output_path)
 
 
