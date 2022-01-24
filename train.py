@@ -83,9 +83,7 @@ def train(
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
 
     # Easier to use GPU args. `-1` = use all, `0` = use gpu 0, `0,1` = use gpus 1 and 2 etc.
-    if isinstance(gpu_devices, str):
-        gpu_devices = [int(gpu.strip(" ")) for gpu in gpu_devices.split(",")]
-    elif gpu_devices != -1:
+    if isinstance(gpu_devices, int) and gpu_devices != -1:
         gpu_devices = [gpu_devices]
     
     output_path = Path(output_dir)
