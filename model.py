@@ -51,15 +51,21 @@ class CLIPCaptionModel(pl.LightningModule):
 
         return out
     
+    def setup(self):
+        dataloader = self.train_dataloader()
+        
+        tb_size = self.hparams.train_batch_size * max(1, self.trainer.gpus)
+        ab_size = self.trainer.accumulate_grad_batches * float(self.trainer.max_epochs)
+
+        self.total_steps = (len(dataloader.dataset) // tb_size) // ab_size
+    
     def configure_optimizers(self):
         self.trainer.reset_train_dataloader(self) # https://github.com/PyTorchLightning/pytorch-lightning/issues/10275
 
         optimizer = AdamW(self.parameters(), lr=self.optimizer_lr)
 
-        train_steps = len(self.training_dataloader()) * self.hparams.max_epochs
-
         scheduler = get_linear_schedule_with_warmup(
-            optimizer, num_warmup_steps=self.num_warmup_steps, num_training_steps=train_steps
+            optimizer, num_warmup_steps=self.num_warmup_steps, num_training_steps=self.total_steps
         )
         
         return [optimizer], [scheduler]
