@@ -58,8 +58,14 @@ class CLIPCaptionModel(pl.LightningModule):
         scheduler = get_linear_schedule_with_warmup(
             optimizer, num_warmup_steps=self.num_warmup_steps, num_training_steps=self.total_steps
         )
+
+        lr_scheduler_config = {
+            "scheduler": scheduler,
+            "interval": "step",
+            "frequency": 1
+        }
         
-        return [optimizer], [scheduler]
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
         tokens, mask, prefix = batch
