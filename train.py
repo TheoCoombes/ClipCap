@@ -9,8 +9,10 @@ from dataset import TokenPrefixDataset
 from lms import GPT2
 
 class CheckpointSaver(pl.Callback):
-    def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1 ,
-                save_every_n_steps: Optional[int] = 1000):
+    def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1,
+            save_every_n_steps: Optional[int] = 1000):
+        output_path.mkdir(exist_ok=True)
+        
         self.output_path = output_path
         self.filename_prefix = filename_prefix
         self.save_every_n_epochs = save_every_n_epochs
