@@ -52,6 +52,8 @@ class CLIPCaptionModel(pl.LightningModule):
         return out
     
     def configure_optimizers(self):
+        self.trainer.reset_train_dataloader(self) # https://github.com/PyTorchLightning/pytorch-lightning/issues/10275
+
         optimizer = AdamW(self.parameters(), lr=self.optimizer_lr)
 
         train_steps = len(self.training_dataloader()) * self.hparams.max_epochs
