@@ -91,7 +91,7 @@ def train(
         save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
     )
 
-    if (isinstance(gpu_devices, list) and len(gpu_devices) > 1) or str(gpu_devices) == "-1":
+    if (isinstance(gpu_devices, str) and "," in gpu_devices) or str(gpu_devices) == -1:
         kwargs = {"strategy": "ddp"}
     else:
         kwargs = {}
