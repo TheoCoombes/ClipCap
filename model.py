@@ -15,6 +15,9 @@ class CLIPCaptionModel(pl.LightningModule):
         
         super().__init__()
 
+        # Disable PL automatic optimization.
+        self.automatic_optimization = False
+
         self.optimizer_lr = optimizer_lr
         self.num_warmup_steps = num_warmup_steps
         self.prefix_length = prefix_length
@@ -58,18 +61,15 @@ class CLIPCaptionModel(pl.LightningModule):
         scheduler = get_linear_schedule_with_warmup(
             optimizer, num_warmup_steps=self.num_warmup_steps, num_training_steps=self.total_steps
         )
-
-        lr_scheduler_config = {
-            "scheduler": scheduler,
-            "interval": "step",
-            "frequency": 1
-        }
         
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
     
-    def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int) -> torch.Tensor:
-        tokens, mask, prefix = batch
+    def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int):
+        optimizer = self.optimizers()
+        scheduler = self.lr_schedulers()
+        self.zero_grad()
 
+        tokens, mask, prefix = batch
         outputs = self(tokens, prefix, mask)
 
         logits = outputs.logits[:, self.prefix_length - 1: -1]
@@ -77,7 +77,10 @@ class CLIPCaptionModel(pl.LightningModule):
 
         self.log("loss", loss.item())
 
-        return loss
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+        optimizer.zero_grad()
 
 
 class CLIPCaptionPrefix(CLIPCaptionModel):
