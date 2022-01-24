@@ -1,5 +1,6 @@
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from typing import Optional
 from pathlib import Path
 import fire
 
@@ -8,16 +9,25 @@ from dataset import TokenPrefixDataset
 from lms import GPT2
 
 class CheckpointSaver(pl.Callback):
-    def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1):
+    def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1 ,
+                save_every_n_steps: Optional[int] = 1000):
         self.output_path = output_path
         self.filename_prefix = filename_prefix
         self.save_every_n_epochs = save_every_n_epochs
+        self.save_every_n_steps = save_every_n_steps
 
     def on_epoch_end(self, trainer: pl.Trainer, _):
         epoch = trainer.current_epoch
         if epoch % self.save_every_n_epochs == 0:
-            output_path = self.output_path / f"{self.filename_prefix}_epoch_{epoch}.pt"
+            output_path = self.output_path / f"{self.filename_prefix}_epoch_{epoch}.ckpt"
             trainer.save_checkpoint(output_path)
+    
+    def on_batch_end(self, trainer: pl.Trainer, _):
+        if self.save_every_n_steps is not None:
+            current_step = trainer.global_step
+            if current_step % self.save_every_n_steps == 0:
+                output_path = self.output_path / f"{self.filename_prefix}_latest.ckpt"
+                trainer.save_checkpoint(output_path)
 
 
 def train(
@@ -74,10 +84,15 @@ def train(
     output_path = Path(output_dir)
     checkpoint_saver = CheckpointSaver(output_path, output_filename_prefix, save_every_n_epochs=save_every_epochs)
 
-    trainer = pl.Trainer(gpus=gpus, max_epochs=epochs, callbacks=[checkpoint_saver])
+    if isinstance(gpus, list) and len(gpus) > 1:
+        kwargs = {"strategy": "ddp"}
+    else:
+        kwargs = {}
+
+    trainer = pl.Trainer(gpus=gpus, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
     trainer.fit(model, dataloader)
 
-    trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.pt")
+    trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")
 
 
 if __name__ == '__main__':
