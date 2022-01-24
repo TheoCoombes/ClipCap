@@ -1,4 +1,6 @@
+from torchvision.transforms import Compose
 import torch.nn.functional as nnf
+from clip.model import CLIP
 from typing import Union
 import skimage.io as io
 from PIL import Image
@@ -6,9 +8,10 @@ import numpy as np
 import torch
 import json
 import clip
+import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefix
-from lms import GPT2Tokenizer
+from lms import GPT2, GPT2Tokenizer
 
 
 def generate_beam(
@@ -80,7 +83,7 @@ def generate_beam(
                 
     scores = scores / seq_lengths
     output_list = tokens.cpu().numpy()
-    output_texts = [tokenizer.decode(output[:int(length)]) for output, length in zip(output_list, seq_lengths)]
+    output_texts = [tokenizer.decode_tokens(output[:int(length)]) for output, length in zip(output_list, seq_lengths)]
 
     order = scores.argsort(descending=True)
     output_texts = [output_texts[i] for i in order]
@@ -138,70 +141,92 @@ def generate_no_beam(
     return output_text
 
 
-device = "cuda:7"
-clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2-xl", cache_dir='/mnt/theocoombes/huggingface-cache')
+def demo_generate_caption(
+    model: Union[CLIPCaptionModel, CLIPCaptionPrefix],
+    tokenizer: GPT2Tokenizer,
+    clip_model: CLIP,
+    clip_preproc: Compose,
+    image: Image.Image,
+    use_beam_search: bool = False,
+    device: str = "cuda:0",
+    **generation_kwargs
+) -> str:
+    image = clip_preproc(image).unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
+        prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
+    
+    if use_beam_search:
+        generated_caption = generate_beam(model, tokenizer, prefix_embed, **generation_kwargs)
+    else:
+        generated_caption = generate_no_beam(model, tokenizer, prefix_embed, **generation_kwargs)
+    
+    return generated_caption
 
 
+def demo(
+    checkpoint_path: str = "./train/latest.pt",
+    prefix_length: int = 40,
+    clip_prefix_length: int = 40,
+    prefix_size: int = 512,
+    mapping_type: str = "mlp",
+    num_layers: int = 8,
+    only_prefix: bool = False,
+    language_model_type: str = "gpt2",
+    language_model_variant: str = "gpt2-xl",
+    clip_model_type: str = "ViT-B/32",
+    load_full_model: bool = True,
+    use_beam_search: bool = False,
+    device: str = "cuda:0",
+    **generation_kwargs
+):
+    clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
 
-prefix_length = 40
-use_beam_search = True
+    if language_model_type == "gpt2":
+        language_model = GPT2.create(language_model_variant)
+        tokenizer = GPT2Tokenizer.create(language_model_variant)
+    else:
+        raise ValueError(f"invalid language model type: '{language_model_type}' (expected 'gpt2')")
 
-model = ClipCaptionPrefix(prefix_length, clip_length=40, prefix_size=512,
-                                  num_layers=8, mapping_type='transformer')
-model.load_state_dict(torch.load(model_path, map_location=CPU))
+    if only_prefix:
+        if not load_full_model:
+            model = CLIPCaptionPrefix(
+                language_model, prefix_length, clip_length=clip_prefix_length,
+                prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
+            )
+            model.load_state_dict(torch.load(checkpoint_path))
+        else:
+            model = CLIPCaptionPrefix.load_from_checkpoint(checkpoint_path=checkpoint_path)
+    else:
+        if load_full_model:
+            model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path)
+        else:
+            model = CLIPCaptionModel(
+                language_model, prefix_length, clip_length=clip_prefix_length,
+                prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
+            )
+            model.load_state_dict(torch.load(checkpoint_path))
+    
+    model = model.to(device)
+    model = model.eval()
 
-model = model.eval()
-model = model.to(device)
+    while True:
+        print("CLIP-Image-Captioning inference demo\n")
 
+        image_path_url = input("enter image url or path > ")
 
-# ----------
-print("\n\n")
-
-samples_path = Path("./test/image-photo/")
-sample_data = {}
-
-for image_file in samples_path.glob("*.jpg"):
-    try:
-        image = io.imread(image_file)
+        image = io.imread(image_path_url)
         image = Image.fromarray(image)
 
-        metadata_file = image_file.parent / image_file.name.replace(".jpg", ".json")
-        with open(metadata_file, "r") as f:
-            metadata = json.load(f)
+        caption = demo_generate_caption(
+            model, tokenizer, clip_model, preprocess, image,
+            use_beam_search=use_beam_search, device=device, **generation_kwargs
+        )
 
-        image = preprocess(image).unsqueeze(0).to(device)
+        print(caption)
+        print()
 
-        with torch.no_grad():
-            prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
 
-            prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
-            
-
-        if use_beam_search:
-            generated_text_prefix = generate_beam(model, tokenizer, embed=prefix_embed)[0]
-        else:
-            generated_text_prefix = generate2(model, tokenizer, embed=prefix_embed)
-
-        url = metadata["src"]
-        original_caption = metadata["alt"]
-
-        text_inputs = torch.cat([
-            clip.tokenize(generated_text_prefix, truncate=True),
-            clip.tokenize(original_caption, truncate=True)
-        ]).to(device)
-
-        with torch.no_grad():
-            text_features = clip_model.encode_text(text_inputs)
-
-        prefix /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
-
-        similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
-
-        print(similarities)
-        break
-
-    except Exception as e:
-        print("exception:", e)
-        break
+if __name__ == "__main__":
+    fire.Fire(demo)
