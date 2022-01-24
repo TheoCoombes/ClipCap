@@ -83,6 +83,9 @@ class CLIPCaptionModel(pl.LightningModule):
         optimizer.zero_grad()
 
         return loss
+    
+    def training_step_end(self, *args, **kwargs) -> STEP_OUTPUT:
+        return super().training_step_end(*args, **kwargs)
 
 
 class CLIPCaptionPrefix(CLIPCaptionModel):
