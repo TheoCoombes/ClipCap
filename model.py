@@ -11,7 +11,7 @@ from lms import GPT2
 
 class CLIPCaptionModel(pl.LightningModule):
     def __init__(self, language_model: GPT2, prefix_length: int, clip_length: Optional[int] = None, prefix_size: int = 512,
-            num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5, num_warmup_steps: int = 5000, , total_steps=None):
+            num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5, num_warmup_steps: int = 5000, total_steps=None):
         
         super().__init__()
 
