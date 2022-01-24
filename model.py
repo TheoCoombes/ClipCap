@@ -54,10 +54,7 @@ class CLIPCaptionModel(pl.LightningModule):
     def setup(self, stage=None):
         dataloader = self.trainer._data_connector._train_dataloader_source.dataloader()
         
-        tb_size = self.hparams.train_batch_size * max(1, self.trainer.gpus)
-        ab_size = self.trainer.accumulate_grad_batches * float(self.trainer.max_epochs)
-
-        self.total_steps = (len(dataloader.dataset) // tb_size) // ab_size
+        self.total_steps = len(dataloader) * self.hparams.max_epochs
     
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), lr=self.optimizer_lr)
