@@ -11,11 +11,12 @@ class Transformer(nn.Module):
         super().__init__()
 
         if dim_ref is None:
-            self.dim_ref = dim_self
+            dim_ref = dim_self
         else:
-            self.dim_ref = dim_ref
+            dim_ref = dim_ref
         
-        self.enc_dec = enc_dec
+        dim_self = dim_self
+        enc_dec = enc_dec
         
         if enc_dec:
             num_layers = num_layers * 2
