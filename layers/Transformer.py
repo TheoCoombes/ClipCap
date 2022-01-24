@@ -16,9 +16,9 @@ class Transformer(nn.Module):
             dim_ref = dim_ref
         
         dim_self = dim_self
-        enc_dec = enc_dec
+        self.enc_dec = enc_dec
         
-        if enc_dec:
+        if self.enc_dec:
             num_layers = num_layers * 2
         
         layers = []
