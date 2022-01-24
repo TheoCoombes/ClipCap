@@ -49,7 +49,7 @@ def train(
     num_layers: int = 8,
     is_resnet_clip: bool = False,
     normalize_prefix: bool = False,
-    gpus: str = "-1",
+    gpu_devices: str = "0",
     **huggingface_kwargs
 ):
     dataset = TokenPrefixDataset(data_dir, normalize_prefix=normalize_prefix)
@@ -81,22 +81,22 @@ def train(
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
 
     # Easier to use GPU args. `-1` = use all, `0` = use gpu 0, `0,1` = use gpus 1 and 2 etc.
-    if isinstance(gpus, str):
-        gpus = [int(gpu.strip(" ")) for gpu in gpus.split(",")]
-    elif gpus != -1:
-        gpus = [gpus]
+    if isinstance(gpu_devices, str):
+        gpu_devices = [int(gpu.strip(" ")) for gpu in gpu_devices.split(",")]
+    elif gpu_devices != -1:
+        gpu_devices = [gpu_devices]
     
     output_path = Path(output_dir)
     checkpoint_saver = CheckpointSaver(output_path, output_filename_prefix,
         save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
     )
 
-    if isinstance(gpus, list) and len(gpus) > 1:
+    if (isinstance(gpu_devices, list) and len(gpu_devices) > 1) or gpu_devices == -1:
         kwargs = {"strategy": "ddp"}
     else:
         kwargs = {}
 
-    trainer = pl.Trainer(gpus=gpus, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
+    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
     trainer.fit(model, dataloader)
 
     trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")
