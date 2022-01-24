@@ -82,6 +82,8 @@ class CLIPCaptionModel(pl.LightningModule):
         scheduler.step()
         optimizer.zero_grad()
 
+        return loss
+
 
 class CLIPCaptionPrefix(CLIPCaptionModel):
     def parameters(self):
