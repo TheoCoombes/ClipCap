@@ -81,8 +81,10 @@ def train(
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
 
     # Easier to use GPU args. `-1` = use all, `0` = use gpu 0, `0,1` = use gpus 1 and 2 etc.
-    if gpus != "-1":
+    if isinstance(gpus, str):
         gpus = [int(gpu.strip(" ")) for gpu in gpus.split(",")]
+    elif gpus != -1:
+        gpus = [gpus]
     
     output_path = Path(output_dir)
     checkpoint_saver = CheckpointSaver(output_path, output_filename_prefix,
