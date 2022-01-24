@@ -31,7 +31,7 @@ class CLIPCaptionModel(pl.LightningModule):
                 prefix_size, self.lm_embedding_size, prefix_length, clip_length, num_layers
             )
         else:
-            raise ValueError(f"invalid mapping type: {mapping_type}. choose from mlp/transformer")
+            raise ValueError(f"invalid mapping type: '{mapping_type}' (choose from 'mlp'/'transformer')")
 
     def get_dummy_token(self, batch_size: int) -> torch.Tensor:
         return torch.zeros(batch_size, self.prefix_length, dtype=torch.int64)

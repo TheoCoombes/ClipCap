@@ -1,9 +1,9 @@
 """ A modified version of clip_inference.py from rom1504/clip-retrieval """
 
-from transformers import AutoTokenizer
 from torch.utils.data.dataloader import default_collate
 from PIL import Image, UnidentifiedImageError
 from torch.utils.data import DataLoader
+from transformers import AutoTokenizer
 from typing import Tuple
 from pathlib import Path
 from io import BytesIO
