@@ -91,12 +91,10 @@ def train(
         save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
     )
 
-    if (isinstance(gpu_devices, str) and "," in gpu_devices) or str(gpu_devices) == -1:
+    if "," in str(gpu_devices) or str(gpu_devices) == "-1":
         kwargs = {"strategy": "ddp"}
     else:
         kwargs = {}
-    
-    print(gpu_devices)
 
     trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
     trainer.fit(model, dataloader)
