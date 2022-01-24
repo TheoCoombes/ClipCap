@@ -12,7 +12,7 @@ class CheckpointSaver(pl.Callback):
     def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1,
             save_every_n_steps: Optional[int] = 1000):
         output_path.mkdir(exist_ok=True)
-        
+
         self.output_path = output_path
         self.filename_prefix = filename_prefix
         self.save_every_n_epochs = save_every_n_epochs
@@ -38,6 +38,7 @@ def train(
     output_filename_prefix: str = "demo_model",
     epochs: int = 10,
     save_every_epochs: int = 1,
+    save_every_steps: int = 10000,
     prefix_length: int = 10,
     prefix_length_clip: int = 10,
     language_model_type = "gpt2",
@@ -84,7 +85,9 @@ def train(
         gpus = [int(gpu.strip(" ")) for gpu in gpus.split(",")]
     
     output_path = Path(output_dir)
-    checkpoint_saver = CheckpointSaver(output_path, output_filename_prefix, save_every_n_epochs=save_every_epochs)
+    checkpoint_saver = CheckpointSaver(output_path, output_filename_prefix,
+        save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
+    )
 
     if isinstance(gpus, list) and len(gpus) > 1:
         kwargs = {"strategy": "ddp"}
