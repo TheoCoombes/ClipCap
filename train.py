@@ -97,6 +97,8 @@ def train(
         kwargs = {"strategy": "ddp"}
     else:
         kwargs = {}
+    
+    print(gpu_devices)
 
     trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
     trainer.fit(model, dataloader)
