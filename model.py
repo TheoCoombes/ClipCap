@@ -52,7 +52,7 @@ class CLIPCaptionModel(pl.LightningModule):
         return out
     
     def setup(self, stage=None):
-        dataloader = self.train_dataloader()
+        dataloader = self.trainer._data_connector._train_dataloader_source.dataloader()
         
         tb_size = self.hparams.train_batch_size * max(1, self.trainer.gpus)
         ab_size = self.trainer.accumulate_grad_batches * float(self.trainer.max_epochs)
