@@ -55,6 +55,8 @@ def train(
     dataset = TokenPrefixDataset(data_dir, normalize_prefix=normalize_prefix)
     prefix_size = 640 if is_resnet_clip else 512
 
+    total_steps = (len(dataset) // batch_size) * epochs
+
     if language_model_type == "gpt2":
         language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
     else:
@@ -67,13 +69,13 @@ def train(
     if only_prefix:
         model = CLIPCaptionPrefix(
             language_model, prefix_length, clip_length=prefix_length_clip,
-            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
+            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type, total_steps=total_steps
         )
         print("Train only Prefix")
     else:
         model = CLIPCaptionModel(
             language_model, prefix_length, clip_length=prefix_length_clip, 
-            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
+            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type, total_steps=total_steps
         )
         print("Train both prefix and language model")
     

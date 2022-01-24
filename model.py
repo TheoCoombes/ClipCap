@@ -11,13 +11,14 @@ from lms import GPT2
 
 class CLIPCaptionModel(pl.LightningModule):
     def __init__(self, language_model: GPT2, prefix_length: int, clip_length: Optional[int] = None, prefix_size: int = 512,
-            num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5, num_warmup_steps: int = 5000):
+            num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5, num_warmup_steps: int = 5000, , total_steps=None):
         
         super().__init__()
 
         self.optimizer_lr = optimizer_lr
         self.num_warmup_steps = num_warmup_steps
         self.prefix_length = prefix_length
+        self.total_steps = total_steps
 
         self.language_model = language_model
         self.lm_embedding_size = self.language_model.get_embedding_size()
@@ -50,11 +51,6 @@ class CLIPCaptionModel(pl.LightningModule):
         out = self.language_model.call(input_embeds=embedding_cat, labels=labels, attention_mask=mask)
 
         return out
-    
-    def setup(self, stage=None):
-        dataloader = self.trainer._data_connector._train_dataloader_source.dataloader()
-        
-        self.total_steps = len(dataloader) * self.hparams.max_epochs
     
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), lr=self.optimizer_lr)
