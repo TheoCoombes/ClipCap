@@ -21,24 +21,3 @@ class MLP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
-
-
-class MLPTransformer(nn.Module):
-    def __init__(self, in_dim, h_dim, out_d: Optional[int] = None, act=nnf.relu, dropout=0.0):
-        super().__init__()
-
-        if out_d is None:
-            out_d = in_dim
-
-        self.fc1 = nn.Linear(in_dim, h_dim)
-        self.act = act
-        self.fc2 = nn.Linear(h_dim, out_d)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = self.act(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        x = self.dropout(x)
-        return x

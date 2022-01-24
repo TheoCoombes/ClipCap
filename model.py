@@ -5,9 +5,8 @@ import pytorch_lightning as pl
 import torch.nn as nn
 import torch
 
-from layers.MLP import MLP
-from layers.Transformer import TransformerMapper
-from language_models import GPT2
+from layers import TransformerMapper, MLP
+from lms import GPT2
 
 
 class CLIPCaptionModel(pl.LightningModule):
@@ -48,7 +47,7 @@ class CLIPCaptionModel(pl.LightningModule):
             dummy_token = self.get_dummy_token(tokens.shape[0])
             labels = torch.cat((dummy_token, tokens), dim=1)
         
-        out = self.language_model(embedding_cat, labels, mask)
+        out = self.language_model.call(embedding_cat, labels, mask)
 
         return out
     

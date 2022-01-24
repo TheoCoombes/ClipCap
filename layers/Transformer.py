@@ -3,8 +3,7 @@ from typing import Optional
 import torch.nn as nn
 import torch
 
-from layers.MultiHeadAttention import MultiHeadAttention
-from layers.MLP import MLPTransformer
+from .MultiHeadAttention import MultiHeadAttention
 
 class Transformer(nn.Module):
     def __init__(self, dim_self: int, num_heads: int, num_layers: int, dim_ref: Optional[int] = None,
@@ -64,6 +63,27 @@ class Transformer(nn.Module):
                 # self or cross
                 x = layer(x, y, mask)
         
+        return x
+
+
+class MLPTransformer(nn.Module):
+    def __init__(self, in_dim, h_dim, out_d: Optional[int] = None, act=nnf.relu, dropout=0.0):
+        super().__init__()
+
+        if out_d is None:
+            out_d = in_dim
+
+        self.fc1 = nn.Linear(in_dim, h_dim)
+        self.act = act
+        self.fc2 = nn.Linear(h_dim, out_d)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        x = self.dropout(x)
         return x
 
 

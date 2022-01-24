@@ -5,7 +5,7 @@ import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefix
 from dataset import TokenPrefixDataset
-from language_models import GPT2
+from lms import GPT2
 
 class CheckpointSaver(pl.Callback):
     def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1):
@@ -43,7 +43,7 @@ def train(
     prefix_size = 640 if is_resnet_clip else 512
 
     if language_model_type == "gpt2":
-        language_model = GPT2(language_model_variant, **huggingface_kwargs)
+        language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
     else:
         # TODO add more language models.
         raise ValueError(f"invalid language model type: '{language_model_type}' (expected 'gpt2')")
