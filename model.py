@@ -98,7 +98,7 @@ class CLIPCaptionModel(pl.LightningModule):
         #scheduler.step()
         #optimizer.zero_grad()
 
-        return {"loss": loss}
+        return loss
 
 
 class CLIPCaptionPrefixOnly(CLIPCaptionModel):
