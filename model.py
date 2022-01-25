@@ -101,7 +101,7 @@ class CLIPCaptionModel(pl.LightningModule):
         return {"loss": loss}
 
 
-class CLIPCaptionPrefix(CLIPCaptionModel):
+class CLIPCaptionPrefixOnly(CLIPCaptionModel):
     def parameters(self):
         return self.clip_project.parameters()
 

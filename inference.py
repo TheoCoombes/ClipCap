@@ -10,12 +10,12 @@ import json
 import clip
 import fire
 
-from model import CLIPCaptionModel, CLIPCaptionPrefix
+from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
 from lms import GPT2, GPT2Tokenizer
 
 
 def generate_beam(
-    model: Union[CLIPCaptionModel, CLIPCaptionPrefix],
+    model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2Tokenizer,
     embed: torch.Tensor,
     beam_size: int = 5,
@@ -92,7 +92,7 @@ def generate_beam(
 
 
 def generate_no_beam(
-    model: Union[CLIPCaptionModel, CLIPCaptionPrefix],
+    model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2Tokenizer,
     embeds: torch.Tensor,
     entry_length: int = 67,
@@ -142,7 +142,7 @@ def generate_no_beam(
 
 
 def demo_generate_caption(
-    model: Union[CLIPCaptionModel, CLIPCaptionPrefix],
+    model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2Tokenizer,
     clip_model: CLIP,
     clip_preproc: Compose,
@@ -192,9 +192,9 @@ def demo(
 
     if only_prefix:
         if load_full_model:
-            model = CLIPCaptionPrefix.load_from_checkpoint(checkpoint_path=checkpoint_path)
+            model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path)
         else:
-            model = CLIPCaptionPrefix(
+            model = CLIPCaptionPrefixOnly(
                 language_model, prefix_length, clip_length=clip_prefix_length,
                 prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
             )

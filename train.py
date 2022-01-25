@@ -4,7 +4,7 @@ from typing import Optional
 from pathlib import Path
 import fire
 
-from model import CLIPCaptionModel, CLIPCaptionPrefix
+from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
 from dataset import TokenPrefixDataset
 from lms import GPT2
 
@@ -40,7 +40,7 @@ def train(
     save_every_epochs: int = 1,
     save_every_steps: int = 10000,
     prefix_length: int = 10,
-    prefix_length_clip: int = 10,
+    clip_prefix_length: int = 10,
     language_model_type = "gpt2",
     language_model_variant = "gpt2-xl",
     batch_size: int = 256,
@@ -68,16 +68,17 @@ def train(
         raise ValueError(f"invalid mapping type '{mapping_type}' (expected 'mlp' or 'transformer')")
 
     if only_prefix:
-        model = CLIPCaptionPrefix(
-            language_model, prefix_length, clip_length=prefix_length_clip,
+        model = CLIPCaptionPrefixOnly(
+            language_model, prefix_length, clip_prefix_length=clip_prefix_length,
             prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
             total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
         )
         print("Train only Prefix")
     else:
         model = CLIPCaptionModel(
-            language_model, prefix_length, clip_length=prefix_length_clip, 
-            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type, total_steps=total_steps
+            language_model, prefix_length, clip_prefix_length=clip_prefix_length, 
+            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
+            total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
         )
         print("Train both prefix and language model")
     
