@@ -88,8 +88,7 @@ class CLIPCaptionModel(pl.LightningModule):
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
         self.log("loss", loss.item(), prog_bar=True)
 
-        #self.manual_backward(loss)
-        loss.backward()
+        self.manual_backward(loss)
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad()

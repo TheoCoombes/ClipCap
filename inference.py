@@ -162,7 +162,7 @@ def demo_generate_caption(
     else:
         generated_caption = generate_no_beam(model, tokenizer, prefix_embed, **generation_kwargs)
     
-    return generated_caption
+    return generated_caption, prefix
 
 
 def demo(
@@ -231,6 +231,74 @@ def demo(
     except KeyboardInterrupt:
         print("exiting...")
         exit(0)
+
+
+def _shutterstock_demo(
+    checkpoint_path: str,
+    shutterstock_path: str,
+    device: str = "cuda:0",
+    use_beam_search: bool = True,
+    **kwargs
+):
+    clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
+    lm = GPT2.create("gpt2-xl")
+    tokenizer = GPT2Tokenizer.create("gpt2-xl")
+
+    model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm, **kwargs)
+    model = model.to(device)
+    model = model.eval()
+
+    from pathlib import Path
+    import json
+
+    samples_path = Path(shutterstock_path)
+    sample_data = {}
+
+    for image_file in samples_path.glob("*.jpg"):
+        try:
+            image = io.imread(image_file)
+            image = Image.fromarray(image)
+
+            metadata_file = image_file.parent / image_file.name.replace(".jpg", ".json")
+            with open(metadata_file, "r") as f:
+                metadata = json.load(f)
+
+            caption, prefix = demo_generate_caption(
+                model, tokenizer, clip_model, preprocess, image,
+                use_beam_search=use_beam_search, device=device
+            )
+
+            url = metadata["src"]
+            original_caption = metadata["alt"]
+
+            text_inputs = torch.cat([
+                clip.tokenize(caption, truncate=True),
+                clip.tokenize(original_caption, truncate=True)
+            ]).to(device)
+
+            with torch.no_grad():
+                text_features = clip_model.encode_text(text_inputs)
+
+            prefix /= prefix.norm(dim=-1, keepdim=True)
+            text_features /= text_features.norm(dim=-1, keepdim=True)
+
+            similarities = prefix.cpu().numpy() @ text_features.cpu().numpy().T
+
+            generated_sim, original_sim = similarities[0]
+
+            sample_data[url] = {
+                "original_caption": original_caption,
+                "original_sim": original_sim,
+                "generated_caption": caption,
+                "generated_sim": generated_sim
+            }
+
+        except Exception as e:
+            print("exception:", e)
+            break
+    
+    with open("shutterstock_inference_data.json", "w+") as f:
+        json.dump(sample_data, f)
 
 
 if __name__ == "__main__":
