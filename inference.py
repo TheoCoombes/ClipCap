@@ -250,12 +250,13 @@ def _shutterstock_demo(
     model = model.eval()
 
     from pathlib import Path
+    from tqdm import tqdm
     import json
 
     samples_path = Path(shutterstock_path)
     sample_data = {}
 
-    for image_file in samples_path.glob("*.jpg"):
+    for image_file in tqdm(samples_path.glob("*.jpg"), desc='inference'):
         try:
             image = io.imread(image_file)
             image = Image.fromarray(image)
