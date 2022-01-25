@@ -12,7 +12,7 @@ from lms import GPT2
 class CLIPCaptionModel(pl.LightningModule):
     def __init__(self, language_model: GPT2, prefix_length: int = 40, clip_prefix_length: int = 40,
                  prefix_size: int = 512, num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5,
-                 num_warmup_steps: int = 5000, total_steps=None, use_8bit_optimizers: bool = False):
+                 num_warmup_steps: int = 5000, total_steps=None, use_8_bit_optimizers: bool = False):
         
         super().__init__()
 
@@ -30,7 +30,7 @@ class CLIPCaptionModel(pl.LightningModule):
         self.optimizer_lr = self.hparams["optimizer_lr"]
         self.num_warmup_steps = self.hparams["num_warmup_steps"]
         self.total_steps = self.hparams["total_steps"] # TODO - find a better workaround finding the total step amount (for `get_linear_schedule_with_warmup`)
-        self.use_8bit_optimizers = self.hparams["use_8bit_optimizers"]
+        self.use_8_bit_optimizers = self.hparams["use_8_bit_optimizers"]
         
         self.lm_embedding_size = self.language_model.get_embedding_size()
 
@@ -64,7 +64,7 @@ class CLIPCaptionModel(pl.LightningModule):
         return out
     
     def configure_optimizers(self):
-        if self.use_8bit_optimizers:
+        if self.use_8_bit_optimizers:
             from bitsandbytes.optim import AdamW8bit
             optimizer = AdamW8bit(self.parameters(), lr=self.optimizer_lr)
         else:  
