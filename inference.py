@@ -162,7 +162,7 @@ def demo_generate_caption(
     else:
         generated_caption = generate_no_beam(model, tokenizer, prefix_embed, **generation_kwargs)
     
-    return generated_caption, prefix
+    return generated_caption
 
 
 def demo(
@@ -265,7 +265,7 @@ def _shutterstock_demo(
             with open(metadata_file, "r") as f:
                 metadata = json.load(f)
 
-            caption, prefix = demo_generate_caption(
+            caption= demo_generate_caption(
                 model, tokenizer, clip_model, preprocess, image,
                 use_beam_search=use_beam_search, device=device
             )
@@ -279,12 +279,13 @@ def _shutterstock_demo(
             ]).to(device)
 
             with torch.no_grad():
+                image_features = clip_model.encode_image(image)
                 text_features = clip_model.encode_text(text_inputs)
 
-            prefix /= prefix.norm(dim=-1, keepdim=True)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
             text_features /= text_features.norm(dim=-1, keepdim=True)
 
-            similarities = prefix.cpu().numpy() @ text_features.cpu().numpy().T
+            similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
 
             print(similarities)
             generated_sim, original_sim = similarities
