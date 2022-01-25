@@ -30,7 +30,7 @@ def generate_beam(
 
     # .type_as(...) is used to support parallel data in pytorch-lightning
     seq_lengths = torch.ones(beam_size).type_as(embed)
-    has_stopped = torch.zeros(beam_size, device=device, dtype=torch.bool).type_as(embed)
+    has_stopped = torch.zeros(beam_size, dtype=torch.bool).type_as(embed)
 
     print(embed.dtype)
     print(seq_lengths.dtype)
@@ -155,7 +155,7 @@ def demo_generate_caption(
 
     with torch.no_grad():
         prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
-        prefix_embed = model.clip_project(prefix).reshape(1, prefix_length, -1)
+        prefix_embed = model.clip_project(prefix).reshape(1, 40, -1)
     
     if use_beam_search:
         generated_caption = generate_beam(model, tokenizer, prefix_embed, **generation_kwargs)
