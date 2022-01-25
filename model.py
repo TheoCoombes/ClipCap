@@ -74,7 +74,7 @@ class CLIPCaptionModel(pl.LightningModule):
             optimizer, num_warmup_steps=self.num_warmup_steps, num_training_steps=self.total_steps
         )
         
-        return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int):
         optimizer = self.optimizers()
@@ -88,7 +88,8 @@ class CLIPCaptionModel(pl.LightningModule):
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
         self.log("loss", loss.item(), prog_bar=True)
 
-        self.manual_backward(loss)
+        #self.manual_backward(loss)
+        loss.backward()
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad()
