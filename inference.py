@@ -270,7 +270,7 @@ def _shutterstock_demo(
 
         caption = caption[0]
 
-        text_inputs = clip.tokenize([caption, original_caption]).to(device)
+        text_inputs = clip.tokenize([caption, original_caption], truncate=True).to(device)
 
         with torch.no_grad():
             text_features = clip_model.encode_text(text_inputs)
