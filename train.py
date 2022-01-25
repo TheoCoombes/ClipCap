@@ -27,7 +27,7 @@ class CheckpointSaver(pl.Callback):
     def on_batch_end(self, trainer: pl.Trainer, _):
         if self.save_every_n_steps is not None:
             current_step = trainer.global_step
-            if current_step % self.save_every_n_steps == 0:
+            if (current_step % self.save_every_n_steps == 0) and current_step != 0:
                 output_path = self.output_path / f"{self.filename_prefix}_latest.ckpt"
                 trainer.save_checkpoint(output_path)
 
