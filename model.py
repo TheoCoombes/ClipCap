@@ -77,7 +77,7 @@ class CLIPCaptionModel(pl.LightningModule):
 
         self.log("loss", loss.item(), prog_bar=True)
 
-        loss.backward()
+        self.manual_backward(loss)
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad()
