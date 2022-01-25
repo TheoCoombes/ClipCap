@@ -279,6 +279,9 @@ def _shutterstock_demo(
         image_features /= image_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
+        print(image_features)
+        print(text_features)
+
         similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
 
         print(similarities)
