@@ -263,6 +263,9 @@ def _shutterstock_demo(
         metadata_file = image_file.parent / image_file.name.replace(".jpg", ".json")
         with open(metadata_file, "r") as f:
             metadata = json.load(f)
+        
+        with torch.no_grad():
+            image_features = clip_model.encode_image(pil_image)
 
         caption= demo_generate_caption(
             model, tokenizer, clip_model, preprocess, pil_image,
@@ -278,7 +281,6 @@ def _shutterstock_demo(
         ]).to(device)
 
         with torch.no_grad():
-            image_features = clip_model.encode_image(Image.fromarray(io.imread(image_file)))
             text_features = clip_model.encode_text(text_inputs)
 
         image_features /= image_features.norm(dim=-1, keepdim=True)
