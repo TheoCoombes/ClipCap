@@ -32,10 +32,6 @@ def generate_beam(
     seq_lengths = torch.ones(beam_size, device="cuda:4")
     has_stopped = torch.zeros(beam_size, dtype=torch.bool, device="cuda:4")
 
-    print(embed.dtype)
-    print(seq_lengths.dtype)
-    print(has_stopped.dtype)
-
     with torch.no_grad():
         for _ in range(entry_length):
             outputs = model.language_model.call(inputs_embeds=embed)
@@ -155,7 +151,6 @@ def demo_generate_caption(
 
     with torch.no_grad():
         prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
-        image_embedding = np.array(prefix)
         prefix_embed = model.clip_project(prefix).reshape(1, 40, -1)
     
     if use_beam_search:
@@ -163,7 +158,7 @@ def demo_generate_caption(
     else:
         generated_caption = generate_no_beam(model, tokenizer, prefix_embed, **generation_kwargs)
     
-    return generated_caption, image_embedding
+    return generated_caption, prefix
 
 
 def demo(
