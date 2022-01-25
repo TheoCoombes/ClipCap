@@ -155,6 +155,7 @@ def demo_generate_caption(
 
     with torch.no_grad():
         prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
+        image_embedding = np.array(prefix)
         prefix_embed = model.clip_project(prefix).reshape(1, 40, -1)
     
     if use_beam_search:
@@ -162,7 +163,7 @@ def demo_generate_caption(
     else:
         generated_caption = generate_no_beam(model, tokenizer, prefix_embed, **generation_kwargs)
     
-    return generated_caption
+    return generated_caption, image_embedding
 
 
 def demo(
@@ -263,11 +264,8 @@ def _shutterstock_demo(
         metadata_file = image_file.parent / image_file.name.replace(".jpg", ".json")
         with open(metadata_file, "r") as f:
             metadata = json.load(f)
-        
-        with torch.no_grad():
-            image_features = clip_model.encode_image(pil_image)
 
-        caption= demo_generate_caption(
+        caption, image_features = demo_generate_caption(
             model, tokenizer, clip_model, preprocess, pil_image,
             use_beam_search=use_beam_search, device=device
         )
