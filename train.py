@@ -49,6 +49,7 @@ def train(
     num_layers: int = 8,
     is_resnet_clip: bool = False,
     normalize_prefix: bool = False,
+    use_8_bit_optimizers: bool = False,
     gpu_devices: str = "0",
     **huggingface_kwargs
 ):
@@ -69,7 +70,8 @@ def train(
     if only_prefix:
         model = CLIPCaptionPrefix(
             language_model, prefix_length, clip_length=prefix_length_clip,
-            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type, total_steps=total_steps
+            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
+            total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
         )
         print("Train only Prefix")
     else:
