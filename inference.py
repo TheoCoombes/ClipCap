@@ -257,50 +257,45 @@ def _shutterstock_demo(
     sample_data = {}
 
     for image_file in tqdm(samples_path.glob("*.jpg"), desc='inference'):
-        try:
-            image = io.imread(image_file)
-            image = Image.fromarray(image)
+        image = io.imread(image_file)
+        pil_image = Image.fromarray(image)
 
-            metadata_file = image_file.parent / image_file.name.replace(".jpg", ".json")
-            with open(metadata_file, "r") as f:
-                metadata = json.load(f)
+        metadata_file = image_file.parent / image_file.name.replace(".jpg", ".json")
+        with open(metadata_file, "r") as f:
+            metadata = json.load(f)
 
-            caption= demo_generate_caption(
-                model, tokenizer, clip_model, preprocess, image,
-                use_beam_search=use_beam_search, device=device
-            )
+        caption= demo_generate_caption(
+            model, tokenizer, clip_model, preprocess, pil_image,
+            use_beam_search=use_beam_search, device=device
+        )
 
-            url = metadata["src"]
-            original_caption = metadata["alt"]
+        url = metadata["src"]
+        original_caption = metadata["alt"]
 
-            text_inputs = torch.cat([
-                clip.tokenize(caption, truncate=True),
-                clip.tokenize(original_caption, truncate=True)
-            ]).to(device)
+        text_inputs = torch.cat([
+            clip.tokenize(caption, truncate=True),
+            clip.tokenize(original_caption, truncate=True)
+        ]).to(device)
 
-            with torch.no_grad():
-                image_features = clip_model.encode_image(image)
-                text_features = clip_model.encode_text(text_inputs)
+        with torch.no_grad():
+            image_features = clip_model.encode_image(Image.fromarray(image))
+            text_features = clip_model.encode_text(text_inputs)
 
-            image_features /= image_features.norm(dim=-1, keepdim=True)
-            text_features /= text_features.norm(dim=-1, keepdim=True)
+        image_features /= image_features.norm(dim=-1, keepdim=True)
+        text_features /= text_features.norm(dim=-1, keepdim=True)
 
-            similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
+        similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
 
-            print(similarities)
-            generated_sim, original_sim = similarities
-            
+        print(similarities)
+        generated_sim, original_sim = similarities
+        
 
-            sample_data[url] = {
-                "original_caption": original_caption,
-                "original_sim": float(original_sim[0]),
-                "generated_caption": caption,
-                "generated_sim": float(generated_sim[0])
-            }
-
-        except Exception as e:
-            print("exception:", e)
-            break
+        sample_data[url] = {
+            "original_caption": original_caption,
+            "original_sim": float(original_sim[0]),
+            "generated_caption": caption,
+            "generated_sim": float(generated_sim[0])
+        }
     
     with open(f"{out_filename_prefix}_shutterstock.json", "w+") as f:
         json.dump(sample_data, f)
