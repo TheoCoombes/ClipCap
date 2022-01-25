@@ -17,7 +17,7 @@ class CLIPCaptionModel(pl.LightningModule):
         super().__init__()
 
         # Save hparams and disable PL automatic optimization.
-        self.save_hyperparameters()
+        #self.save_hyperparameters()
         #self.automatic_optimization = False
         
         # Save hparams as class attributes for better readability.
