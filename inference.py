@@ -238,6 +238,7 @@ def _shutterstock_demo(
     shutterstock_path: str,
     device: str = "cuda:0",
     use_beam_search: bool = True,
+    out_filename_prefix: str = "demo_inference",
     **kwargs
 ):
     clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
@@ -297,9 +298,9 @@ def _shutterstock_demo(
             print("exception:", e)
             break
     
-    with open("shutterstock_inference_data.json", "w+") as f:
+    with open(f"{out_filename_prefix}_shutterstock.json", "w+") as f:
         json.dump(sample_data, f)
 
 
 if __name__ == "__main__":
-    fire.Fire(demo)
+    fire.Fire(_shutterstock_demo)
