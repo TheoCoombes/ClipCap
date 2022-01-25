@@ -74,7 +74,7 @@ class CLIPCaptionModel(pl.LightningModule):
             optimizer, num_warmup_steps=self.num_warmup_steps, num_training_steps=self.total_steps
         )
         
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
     
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int):
         optimizer = self.optimizers()
