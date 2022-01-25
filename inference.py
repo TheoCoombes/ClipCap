@@ -29,8 +29,8 @@ def generate_beam(
     scores = None
 
     # .type_as(...) is used to support parallel data in pytorch-lightning
-    seq_lengths = torch.ones(beam_size).type_as(embed)
-    has_stopped = torch.zeros(beam_size, dtype=torch.bool).type_as(embed)
+    seq_lengths = torch.ones(beam_size, device="cuda:4")
+    has_stopped = torch.zeros(beam_size, dtype=torch.bool, device="cuda:4")
 
     print(embed.dtype)
     print(seq_lengths.dtype)
