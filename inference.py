@@ -268,7 +268,7 @@ def _shutterstock_demo(
         url = metadata["src"]
         original_caption = metadata["alt"]
 
-        print(caption)
+        caption = caption[0]
 
         text_inputs = clip.tokenize([caption, original_caption]).to(device)
 
