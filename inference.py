@@ -74,7 +74,7 @@ def generate_beam(
 
                 has_stopped = has_stopped[next_tokens_source]
             
-            next_token_embed = model.gpt.transformer.wte(next_tokens.squeeze()).view(embed.shape[0], 1, -1)
+            next_token_embed = model.language_model.get_embedding_text(next_tokens.squeeze()).view(embed.shape[0], 1, -1)
             embed = torch.cat((embed, next_token_embed), dim=1)
             has_stopped = has_stopped + next_tokens.eq(stop_token).squeeze()
 
@@ -123,7 +123,7 @@ def generate_no_beam(
             logits[:, indices_to_remove] = filter_value
 
             next_token = torch.argmax(logits, -1).unsqueeze(0)
-            next_token_embed = model.gpt.transformer.wte(next_token)
+            next_token_embed = model.language_model.get_embedding_text(next_token)
 
             if tokens is None:
                 tokens = next_token
