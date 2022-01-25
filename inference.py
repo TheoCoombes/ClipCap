@@ -286,13 +286,15 @@ def _shutterstock_demo(
 
             similarities = prefix.cpu().numpy() @ text_features.cpu().numpy().T
 
-            generated_sim, original_sim = similarities[0]
+            print(similarities)
+            generated_sim, original_sim = similarities
+            
 
             sample_data[url] = {
                 "original_caption": original_caption,
-                "original_sim": original_sim,
+                "original_sim": float(original_sim[0]),
                 "generated_caption": caption,
-                "generated_sim": generated_sim
+                "generated_sim": float(generated_sim[0])
             }
 
         except Exception as e:
