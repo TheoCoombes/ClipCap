@@ -252,7 +252,7 @@ def _shutterstock_demo(
     samples_path = Path(shutterstock_path)
     sample_data = {}
 
-    for image_file in tqdm(samples_path.glob("*.jpg"), desc='inference'):
+    for image_file in tqdm(list(samples_path.glob("*.jpg"))[:100], desc='inference'):
         image = io.imread(image_file)
         pil_image = Image.fromarray(image)
 
