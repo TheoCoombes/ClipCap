@@ -268,10 +268,7 @@ def _shutterstock_demo(
         url = metadata["src"]
         original_caption = metadata["alt"]
 
-        text_inputs = torch.cat([
-            clip.tokenize(caption, truncate=True),
-            clip.tokenize(original_caption, truncate=True)
-        ]).to(device)
+        text_inputs = clip.tokenize([caption, original_caption], truncate=True).to(device)
 
         with torch.no_grad():
             text_features = clip_model.encode_text(text_inputs)
