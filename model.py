@@ -10,29 +10,36 @@ from lms import GPT2
 
 
 class CLIPCaptionModel(pl.LightningModule):
-    def __init__(self, language_model: GPT2, prefix_length: int = 40, clip_length: int = 40, prefix_size: int = 512, num_layers: int = 8,
-                 mapping_type: str = 'mlp', optimizer_lr: float = 2e-5, num_warmup_steps: int = 5000, total_steps=None):
+    def __init__(self, language_model: GPT2, prefix_length: int = 40, clip_prefix_length: int = 40, prefix_size: int = 512, num_layers: int = 8,
+                 mapping_type: str = 'mlp', optimizer_lr: float = 2e-5, num_warmup_steps: int = 5000, total_steps=None, use_8bit_optims: bool = False):
         
         super().__init__()
 
-        # Disable PL automatic optimization.
-        self.automatic_optimization = False
-
-        self.optimizer_lr = optimizer_lr
-        self.num_warmup_steps = num_warmup_steps
-        self.prefix_length = prefix_length
-        self.total_steps = total_steps
-
-        self.language_model = language_model
+        # Save hparams and disable PL automatic optimization.
+        self.save_hyperparameters()
+        #self.automatic_optimization = False
+        
+        # Save hparams as class attributes for better readability.
+        self.language_model = self.hparams["language_model"]
+        self.prefix_length = self.hparams["prefix_length"]
+        self.clip_prefix_length = self.hparams["clip_prefix_length"]
+        self.prefix_size = self.hparams["prefix_size"]
+        self.num_layers = self.hparams["num_layers"]
+        self.mapping_type = self.hparams["mapping_type"]
+        self.optimizer_lr = self.hparams["optimizer_lr"]
+        self.num_warmup_steps = self.hparams["num_warmup_steps"]
+        self.total_steps = self.hparams["total_steps"] # TODO - find a better workaround finding the total step amount (for `get_linear_schedule_with_warmup`)
+        self.use_8bit_optims = self.hparams["use_8bit_optims"]
+        
         self.lm_embedding_size = self.language_model.get_embedding_size()
 
-        if mapping_type == 'mlp':
+        if self.mapping_type == 'mlp':
             self.clip_project = MLP(
-                (prefix_size, (self.lm_embedding_size * prefix_length) // 2, self.lm_embedding_size * prefix_length)
+                (self.prefix_size, (self.lm_embedding_size * self.prefix_length) // 2, self.lm_embedding_size * self.prefix_length)
             )
-        elif mapping_type == 'transformer':
+        elif self.mapping_type == 'transformer':
             self.clip_project = TransformerMapper(
-                prefix_size, self.lm_embedding_size, prefix_length, clip_length, num_layers
+                self.prefix_size, self.lm_embedding_size, self.prefix_length, self.clip_prefix_length, self.num_layers
             )
         else:
             raise ValueError(f"invalid mapping type: '{mapping_type}' (choose from 'mlp'/'transformer')")
@@ -56,18 +63,28 @@ class CLIPCaptionModel(pl.LightningModule):
         return out
     
     def configure_optimizers(self):
-        optimizer = AdamW(self.parameters(), lr=self.optimizer_lr)
+        if self.use_8bit_optims:
+            from bitsandbytes.optim import AdamW8bit
+            optimizer = AdamW8bit(self.parameters(), lr=self.optimizer_lr)
+        else:  
+            optimizer = AdamW(self.parameters(), lr=self.optimizer_lr)
 
         scheduler = get_linear_schedule_with_warmup(
             optimizer, num_warmup_steps=self.num_warmup_steps, num_training_steps=self.total_steps
         )
         
-        return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        lr_scheduler_config = {
+            "scheduler": scheduler,
+            "interval": "step",
+            "frequency": 1
+        }
+        
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int):
-        optimizer = self.optimizers()
-        scheduler = self.lr_schedulers()
-        self.zero_grad()
+        #optimizer = self.optimizers()
+        #scheduler = self.lr_schedulers()
+        #self.zero_grad()
 
         tokens, mask, prefix = batch
         outputs = self(tokens, prefix, mask)
@@ -75,14 +92,12 @@ class CLIPCaptionModel(pl.LightningModule):
         logits = outputs.logits[:, self.prefix_length - 1: -1]
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
 
-        self.log("loss", loss.item(), prog_bar=True)
+        #self.manual_backward(loss)
+        #optimizer.step()
+        #scheduler.step()
+        #optimizer.zero_grad()
 
-        self.manual_backward(loss)
-        optimizer.step()
-        scheduler.step()
-        optimizer.zero_grad()
-
-        return loss
+        return {"loss": loss}
 
 
 class CLIPCaptionPrefix(CLIPCaptionModel):
