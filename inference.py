@@ -268,7 +268,9 @@ def _shutterstock_demo(
         url = metadata["src"]
         original_caption = metadata["alt"]
 
-        text_inputs = clip.tokenize([caption, original_caption], truncate=True).to(device)
+        print(caption)
+
+        text_inputs = clip.tokenize([caption, original_caption]).to(device)
 
         with torch.no_grad():
             text_features = clip_model.encode_text(text_inputs)
@@ -276,20 +278,16 @@ def _shutterstock_demo(
         image_features /= image_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        print(image_features)
-        print(text_features)
-
         similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
 
-        print(similarities)
-        generated_sim, original_sim = similarities
+        generated_sim, original_sim = similarities[0]
         
 
         sample_data[url] = {
             "original_caption": original_caption,
-            "original_sim": float(original_sim[0]),
+            "original_sim": float(original_sim),
             "generated_caption": caption,
-            "generated_sim": float(generated_sim[0])
+            "generated_sim": float(generated_sim)
         }
     
     with open(f"{out_filename_prefix}_shutterstock.json", "w+") as f:
