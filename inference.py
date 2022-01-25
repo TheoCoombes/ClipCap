@@ -24,7 +24,7 @@ def generate_beam(
     stop_token: str = '.'
 ):
 
-    stop_token = tokenizer.encode_tokens(stop_token)[0]
+    stop_token = tokenizer.encode_text(stop_token)[0]
     tokens = None
     scores = None
 
@@ -101,7 +101,7 @@ def generate_no_beam(
     stop_token: str = '.'
 ):
 
-    stop_token = tokenizer.encode_tokens(stop_token)[0]
+    stop_token = tokenizer.encode_text(stop_token)[0]
     tokens = None
 
     filter_value = -float(np.inf)
