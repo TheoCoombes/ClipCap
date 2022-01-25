@@ -278,7 +278,7 @@ def _shutterstock_demo(
         ]).to(device)
 
         with torch.no_grad():
-            image_features = clip_model.encode_image(Image.fromarray(image))
+            image_features = clip_model.encode_image(Image.fromarray(io.imread(image_file)))
             text_features = clip_model.encode_text(text_inputs)
 
         image_features /= image_features.norm(dim=-1, keepdim=True)
