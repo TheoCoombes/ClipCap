@@ -17,8 +17,10 @@ class CLIPCaptionModel(pl.LightningModule):
         super().__init__()
 
         # Save hparams and disable PL automatic optimization.
-        #self.save_hyperparameters()
+        self.save_hyperparameters()
         #self.automatic_optimization = False
+
+        print("test")
         
         # Save hparams as class attributes for better readability.
         self.language_model = self.hparams["language_model"]
@@ -92,6 +94,7 @@ class CLIPCaptionModel(pl.LightningModule):
 
         logits = outputs.logits[:, self.prefix_length - 1: -1]
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
+        print("did this run?")
 
         #self.manual_backward(loss)
         #optimizer.step()
