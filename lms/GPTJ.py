@@ -3,7 +3,7 @@ from typing import Optional
 import torch
 
 
-class GPT_J(GPTJForCausalLM):
+class GPTJ(GPTJForCausalLM):
     @classmethod
     def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
