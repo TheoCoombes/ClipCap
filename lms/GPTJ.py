@@ -139,7 +139,7 @@ class GPTJModel(transformers.models.gptj.modeling_gptj.GPTJModel):
         convert_to_int8(self)
         
 
-class GPTJ_8bit(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
+class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
     def __init__(self, config):
         transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT-J
         super().__init__(config)
@@ -149,22 +149,6 @@ class GPTJ_8bit(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
     def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
     
-    def get_embedding_size(self) -> int:
-        return self.transformer.wte.weight.shape[1]
-    
-    def get_embedding_text(self, tokens: torch.Tensor) -> torch.Tensor:
-        return self.transformer.wte(tokens)
-    
-    def call(self, inputs_embeds: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None,
-            attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        return self(inputs_embeds=inputs_embeds, labels=labels, attention_mask=attention_mask)
-
-
-class GPTJ(AutoModelForCausalLM):
-    @classmethod
-    def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
-        return cls.from_pretrained(model_variant, **huggingface_kwargs)
-
     def get_embedding_size(self) -> int:
         return self.transformer.wte.weight.shape[1]
     
