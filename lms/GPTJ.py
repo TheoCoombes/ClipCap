@@ -1,6 +1,6 @@
 from bitsandbytes.functional import quantize_blockwise, dequantize_blockwise
-from transformers import AutoModelForCausalLM, GPT2Tokenizer
 from torch.cuda.amp import custom_fwd, custom_bwd
+from transformers import GPT2Tokenizer
 import torch.nn.functional as F
 from typing import Optional
 import transformers
@@ -137,11 +137,11 @@ class GPTJModel(transformers.models.gptj.modeling_gptj.GPTJModel):
     def __init__(self, config):
         super().__init__(config)
         convert_to_int8(self)
-        
+
+transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT-J  
 
 class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
     def __init__(self, config):
-        transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT-J
         super().__init__(config)
         convert_to_int8(self)
     
