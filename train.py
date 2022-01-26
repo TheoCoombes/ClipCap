@@ -95,7 +95,10 @@ def train(
     )
 
     if "," in str(gpu_devices) or str(gpu_devices) == "-1":
-        kwargs = {"strategy": "ddp"}
+        from pytorch_lightning.strategies import DDPStrategy
+        kwargs = {
+            "strategy": DDPStrategy(find_unused_parameters=False)
+        }
     else:
         kwargs = {}
 
