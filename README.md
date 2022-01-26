@@ -1,2 +1,2 @@
 # CLIP-Image-Captioning
-[WIP] Using CLIP to generate captions from image embeddings.
+[WIP] Using CLIP+GPT2 to generate captions from images.
