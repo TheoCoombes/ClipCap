@@ -59,9 +59,9 @@ def train(
     total_steps = (len(dataset) // batch_size) * epochs
 
     if language_model_type == "gpt2":
-        language_model = GPT2.create(language_model_type, **huggingface_kwargs)
+        language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
     elif language_model_type in ("gptj", "gpt-j"):
-        language_model = GPTJ.create(language_model_type, **huggingface_kwargs)
+        language_model = GPTJ.create(language_model_variant, **huggingface_kwargs)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' or 'gpt2')")
 
