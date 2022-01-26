@@ -3,7 +3,7 @@
 from torch.utils.data.dataloader import default_collate
 from PIL import Image, UnidentifiedImageError
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer
+from lms import LMTokenizer
 from typing import Tuple
 from pathlib import Path
 from io import BytesIO
@@ -62,7 +62,7 @@ def get_image_dataset():
 
             self.keys = list(keys)
             
-            self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+            self.tokenizer = LMTokenizer.create(tokenizer_model)
             self.max_token_length = max_token_length
             self.prefix_length = prefix_length
             
@@ -91,7 +91,7 @@ def get_image_dataset():
             text_file = self.text_files[key]
             caption = text_file.read_text()
             
-            text_tokens = torch.tensor(self.tokenizer.encode(caption), dtype=torch.int64)
+            text_tokens = torch.tensor(self.tokenizer.encode_text(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
             
             text_tokens, mask = text_tokens.numpy(), mask.numpy()
@@ -121,7 +121,7 @@ def create_webdataset(
 
     dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10 ** 10, handler=wds.handlers.warn_and_continue)
     
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+    tokenizer = LMTokenizer.create(tokenizer_model)
     tokenizer.add_special_tokens({'pad_token': tokenizer.eos_token})
 
     def filter_dataset(item):
@@ -148,7 +148,7 @@ def create_webdataset(
             text = item[caption_key]
             caption = text.decode("utf-8")
             
-            text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
+            text_tokens = torch.tensor(tokenizer.encode_text(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
             text_tokens, mask = text_tokens.numpy(), mask.numpy()
@@ -161,7 +161,7 @@ def create_webdataset(
             metadata = metadata_file.decode("utf-8")
             caption = json.loads(metadata)[caption_key]
             
-            text_tokens = torch.tensor(tokenizer.encode(caption), dtype=torch.int64)
+            text_tokens = torch.tensor(tokenizer.encode_text(caption), dtype=torch.int64)
             text_tokens, mask = preprocess_text_tokens(text_tokens, max_token_length, prefix_length)
             
             text_tokens, mask = text_tokens.numpy(), mask.numpy()

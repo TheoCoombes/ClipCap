@@ -11,12 +11,12 @@ import clip
 import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
-from lms import GPT2, GPT2Tokenizer
+from lms import LanguageModel, LMTokenizer
 
 
 def generate_beam(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
-    tokenizer: GPT2Tokenizer,
+    tokenizer: LMTokenizer,
     embed: torch.Tensor,
     beam_size: int = 5,
     entry_length: int = 67,
@@ -89,7 +89,7 @@ def generate_beam(
 
 def generate_no_beam(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
-    tokenizer: GPT2Tokenizer,
+    tokenizer: LMTokenizer,
     embeds: torch.Tensor,
     entry_length: int = 67,
     top_p: float = 0.8,
@@ -139,7 +139,7 @@ def generate_no_beam(
 
 def demo_generate_caption(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
-    tokenizer: GPT2Tokenizer,
+    tokenizer: LMTokenizer,
     clip_model: CLIP,
     clip_preproc: Compose,
     image: Image.Image,
@@ -181,8 +181,8 @@ def demo(
 
     if language_model_type == "gpt2":
         if not load_full_model:
-            language_model = GPT2.create(language_model_variant)
-        tokenizer = GPT2Tokenizer.create(language_model_variant)
+            language_model = LanguageModel.create(language_model_variant)
+        tokenizer = LMTokenizer.create(language_model_variant)
     else:
         raise ValueError(f"invalid language model type: '{language_model_type}' (expected 'gpt2')")
 
@@ -238,8 +238,8 @@ def _shutterstock_demo(
     **kwargs
 ):
     clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
-    lm = GPT2.create("gpt2-xl")
-    tokenizer = GPT2Tokenizer.create("gpt2-xl")
+    lm = LanguageModel.create("gpt2-xl")
+    tokenizer = LMTokenizer.create("gpt2-xl")
 
     model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm, **kwargs)
     model = model.to(device)
