@@ -1,16 +1,16 @@
 from transformers import AdamW, get_linear_schedule_with_warmup
+from typing import Optional, Tuple, Union
 from torch.nn import functional as nnf
-from typing import Optional, Tuple
 import pytorch_lightning as pl
 import torch.nn as nn
 import torch
 
 from layers import TransformerMapper, MLP
-from lms import LanguageModel
+from lms import GPT2, GPTJ
 
 
 class CLIPCaptionModel(pl.LightningModule):
-    def __init__(self, language_model: LanguageModel, prefix_length: int = 40, clip_prefix_length: int = 40,
+    def __init__(self, language_model: Union[GPT2, GPTJ], prefix_length: int = 40, clip_prefix_length: int = 40,
                  prefix_size: int = 512, num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5,
                  num_warmup_steps: int = 5000, total_steps=None, use_8_bit_optimizers: bool = False):
         

@@ -1,4 +1,4 @@
 """ lms provides language model (and tokenizer) wrappers. """
 
-from .lms import LanguageModel
-from .tokenizers import LMTokenizer
+from .GPT2 import GPT2, GPT2_Tokenizer
+from .GPTJ import GPTJ, GPTJ_Tokenizer

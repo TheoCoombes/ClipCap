@@ -6,7 +6,7 @@ import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
 from dataset import TokenPrefixDataset
-from lms import LanguageModel
+from lms import GPT2, GPTJ
 
 class CheckpointSaver(pl.Callback):
     def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1,
@@ -41,7 +41,8 @@ def train(
     save_every_steps: int = 10000,
     prefix_length: int = 10,
     clip_prefix_length: int = 10,
-    language_model_type = "gpt2-xl",
+    language_model_type = "gpt2",
+    language_model_variant = "gpt2-xl",
     batch_size: int = 256,
     only_prefix: bool = False,
     mapping_type: str = "mlp",
@@ -57,7 +58,10 @@ def train(
 
     total_steps = (len(dataset) // batch_size) * epochs
 
-    language_model = LanguageModel.create(language_model_type, **huggingface_kwargs)
+    if language_model_type == "gpt2":
+        language_model = GPT2.create(language_model_type, **huggingface_kwargs)
+    elif language_model_type in ("gptj", "gpt-j"):
+        language_model = GPTJ.create(language_model_type, **huggingface_kwargs)
 
     if mapping_type not in ("mlp", "transformer"):
         raise ValueError(f"invalid mapping type '{mapping_type}' (expected 'mlp' or 'transformer')")
