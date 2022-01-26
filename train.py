@@ -62,6 +62,8 @@ def train(
         language_model = GPT2.create(language_model_type, **huggingface_kwargs)
     elif language_model_type in ("gptj", "gpt-j"):
         language_model = GPTJ.create(language_model_type, **huggingface_kwargs)
+    else:
+        raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' or 'gpt2')")
 
     if mapping_type not in ("mlp", "transformer"):
         raise ValueError(f"invalid mapping type '{mapping_type}' (expected 'mlp' or 'transformer')")
