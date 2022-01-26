@@ -16,9 +16,8 @@ class CLIPCaptionModel(pl.LightningModule):
         
         super().__init__()
 
-        # Save hparams and disable PL automatic optimization.
+        # Save hparams for easy model loading.
         self.save_hyperparameters(ignore=["language_model"])
-        #self.automatic_optimization = False
         
         # Save hparams as class attributes for better readability.
         self.language_model = language_model
@@ -83,22 +82,12 @@ class CLIPCaptionModel(pl.LightningModule):
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int):
-        #optimizer = self.optimizers()
-        #scheduler = self.lr_schedulers()
-        #self.zero_grad()
-
         tokens, mask, prefix = batch
         outputs = self(tokens, prefix, mask)
 
         logits = outputs.logits[:, self.prefix_length - 1: -1]
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
-        #self.log("loss", loss.item(), prog_bar=True)
-
-        #self.manual_backward(loss)
-        #optimizer.step()
-        #scheduler.step()
-        #optimizer.zero_grad()
-
+        
         return loss
 
 

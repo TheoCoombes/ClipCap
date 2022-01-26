@@ -98,7 +98,7 @@ def train(
     if "," in str(gpu_devices) or str(gpu_devices) == "-1":
         from pytorch_lightning.plugins import DDPPlugin
         kwargs = {
-            "plugins": [DDPPlugin(find_unused_parameters=False)]
+            "strategy": DDPPlugin(find_unused_parameters=False)
         }
     else:
         kwargs = {}

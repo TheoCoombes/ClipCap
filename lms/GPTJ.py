@@ -104,7 +104,6 @@ def convert_to_int8(model):
     for module in list(model.modules()):
         for name, child in module.named_children():
             if isinstance(child, nn.Linear):
-                print(name, child)
                 setattr( 
                     module,
                     name,
@@ -143,7 +142,9 @@ transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT
 class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
     def __init__(self, config):
         super().__init__(config)
+        print("Quantizing GPTJ...")
         convert_to_int8(self)
+        
     
     @classmethod
     def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
