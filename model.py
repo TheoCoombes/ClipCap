@@ -17,20 +17,20 @@ class CLIPCaptionModel(pl.LightningModule):
         super().__init__()
 
         # Save hparams and disable PL automatic optimization.
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["language_model"])
         self.automatic_optimization = False
         
         # Save hparams as class attributes for better readability.
-        self.language_model = self.hparams["language_model"]
-        self.prefix_length = self.hparams["prefix_length"]
-        self.clip_prefix_length = self.hparams["clip_prefix_length"]
-        self.prefix_size = self.hparams["prefix_size"]
-        self.num_layers = self.hparams["num_layers"]
-        self.mapping_type = self.hparams["mapping_type"]
-        self.optimizer_lr = self.hparams["optimizer_lr"]
-        self.num_warmup_steps = self.hparams["num_warmup_steps"]
-        self.total_steps = self.hparams["total_steps"] # TODO - find a better workaround finding the total step amount (for `get_linear_schedule_with_warmup`)
-        self.use_8_bit_optimizers = self.hparams["use_8_bit_optimizers"]
+        self.language_model = language_model
+        self.prefix_length = prefix_length
+        self.clip_prefix_length = clip_prefix_length
+        self.prefix_size = prefix_size
+        self.num_layers = num_layers
+        self.mapping_type = mapping_type
+        self.optimizer_lr = optimizer_lr
+        self.num_warmup_steps = num_warmup_steps
+        self.total_steps = total_steps # TODO - find a better workaround finding the total step amount (for `get_linear_schedule_with_warmup`)
+        self.use_8_bit_optimizers = use_8_bit_optimizers
         
         self.lm_embedding_size = self.language_model.get_embedding_size()
 
