@@ -2,6 +2,7 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer
 from typing import Optional
 import torch
 
+
 class GPT2(GPT2LMHeadModel):
     @classmethod
     def create(cls, model_variant: str = "gpt2-xl", **huggingface_kwargs):

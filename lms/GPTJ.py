@@ -1,10 +1,11 @@
-from transformers import GPTJForCausalLM, GPTJTokenizer
+from transformers import GPTJForCausalLM, GPT2Tokenizer
 from typing import Optional
 import torch
 
+
 class GPT_J(GPTJForCausalLM):
     @classmethod
-    def create(cls, model_variant: str = "gpt2-xl", **huggingface_kwargs):
+    def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
 
     def get_embedding_size(self) -> int:
@@ -17,9 +18,10 @@ class GPT_J(GPTJForCausalLM):
             attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         return self(inputs_embeds=inputs_embeds, labels=labels, attention_mask=attention_mask)
 
-class GPTJ_Tokenizer(GPTJTokenizer):
+
+class GPTJ_Tokenizer(GPT2Tokenizer):
     @classmethod
-    def create(cls, model_variant: str = "gpt2-xl", **huggingface_kwargs):
+    def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
     
     def encode_text(self, text: str, truncate: bool = False) -> torch.Tensor:
