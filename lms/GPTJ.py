@@ -175,5 +175,3 @@ class GPTJ_Tokenizer(GPT2Tokenizer):
     
     def decode_tokens(self, tokens: torch.Tensor) -> str:
         return self.decode(tokens)
-
-transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT-J
