@@ -2,6 +2,7 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from typing import Optional
 from pathlib import Path
+import pickle
 import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
@@ -62,6 +63,8 @@ def train(
         language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
     elif language_model_type in ("gptj", "gpt-j"):
         language_model = GPTJ.create(language_model_variant, **huggingface_kwargs)
+        with open("gptj.obj", "w+") as f:
+            pickle.dump(language_model, f)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' or 'gpt2')")
 
@@ -82,7 +85,6 @@ def train(
             total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
         )
         print("Train both prefix and language model")
-    
     
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
 
