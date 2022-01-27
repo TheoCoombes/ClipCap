@@ -63,7 +63,7 @@ def train(
         language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
     elif language_model_type in ("gptj", "gpt-j"):
         language_model = GPTJ.create(language_model_variant, **huggingface_kwargs)
-        torch.save(language_model, "gptj.pt")
+        #torch.save(language_model, "gptj.pt")
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' or 'gpt2')")
 

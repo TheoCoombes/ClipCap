@@ -168,7 +168,7 @@ class GPTJ(GPTJForCausalLM):
 class GPTJ_Tokenizer(GPT2Tokenizer):
     @classmethod
     def create(cls, model_variant: str = "EleutherAI/gpt-j-6B", **huggingface_kwargs):
-        return cls.from_pretrained(model_variant, **huggingface_kwargs)
+        return torch.load("gptj.pt") #cls.from_pretrained(model_variant, **huggingface_kwargs)
     
     def encode_text(self, text: str, truncate: bool = False) -> torch.Tensor:
         return self.encode(text, truncate=truncate)
