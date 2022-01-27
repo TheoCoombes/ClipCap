@@ -145,7 +145,7 @@ class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
 
     @classmethod
     def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
-        return cls.from_pretrained(model_variant, **huggingface_kwargs)
+        return cls.from_pretrained(model_variant, low_cpu_mem_usage=True, **huggingface_kwargs)
     
     def get_embedding_size(self) -> int:
         return self.transformer.wte.weight.shape[1]
