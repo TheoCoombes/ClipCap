@@ -7,28 +7,6 @@ import transformers
 from torch import nn
 import torch
 
-class DequantizeAndLinear(torch.autograd.Function): 
-    @staticmethod
-    @custom_fwd
-    def forward(ctx, input: torch.Tensor, weights_quantized: torch.ByteTensor,
-                absmax: torch.FloatTensor, code: torch.FloatTensor, bias: torch.FloatTensor):
-        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
-        ctx.save_for_backward(input, weights_quantized, absmax, code)
-        ctx._has_bias = bias is not None
-        return F.linear(input, weights_deq, bias)
- 
-    @staticmethod
-    @custom_bwd
-    def backward(ctx, grad_output: torch.Tensor):
-        assert not ctx.needs_input_grad[1] and not ctx.needs_input_grad[2] and not ctx.needs_input_grad[3]
-        input, weights_quantized, absmax, code = ctx.saved_tensors
-        # grad_output: [*batch, out_features]
-        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
-        grad_input = grad_output @ weights_deq
-        grad_bias = grad_output.flatten(0, -2).sum(dim=0) if ctx._has_bias else None
-        return grad_input, None, None, None, grad_bias
-
-
 class FrozenBNBLinear(nn.Module):
     def __init__(self, weight, absmax, code, bias=None):
         assert isinstance(bias, nn.Parameter) or bias is None
@@ -53,6 +31,28 @@ class FrozenBNBLinear(nn.Module):
  
     def __repr__(self):
         return f"{self.__class__.__name__}({self.in_features}, {self.out_features})"
+ 
+ 
+class DequantizeAndLinear(torch.autograd.Function): 
+    @staticmethod
+    @custom_fwd
+    def forward(ctx, input: torch.Tensor, weights_quantized: torch.ByteTensor,
+                absmax: torch.FloatTensor, code: torch.FloatTensor, bias: torch.FloatTensor):
+        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
+        ctx.save_for_backward(input, weights_quantized, absmax, code)
+        ctx._has_bias = bias is not None
+        return F.linear(input, weights_deq, bias)
+ 
+    @staticmethod
+    @custom_bwd
+    def backward(ctx, grad_output: torch.Tensor):
+        assert not ctx.needs_input_grad[1] and not ctx.needs_input_grad[2] and not ctx.needs_input_grad[3]
+        input, weights_quantized, absmax, code = ctx.saved_tensors
+        # grad_output: [*batch, out_features]
+        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
+        grad_input = grad_output @ weights_deq
+        grad_bias = grad_output.flatten(0, -2).sum(dim=0) if ctx._has_bias else None
+        return grad_input, None, None, None, grad_bias
  
  
 class FrozenBNBEmbedding(nn.Module):
@@ -104,6 +104,7 @@ def convert_to_int8(model):
     for module in list(model.modules()):
         for name, child in module.named_children():
             if isinstance(child, nn.Linear):
+                print(name, child)
                 setattr( 
                     module,
                     name,
@@ -137,15 +138,21 @@ class GPTJModel(transformers.models.gptj.modeling_gptj.GPTJModel):
     def __init__(self, config):
         super().__init__(config)
         convert_to_int8(self)
+        
 
-class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
+class GPTJForCausalLM(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
     def __init__(self, config):
         super().__init__(config)
         convert_to_int8(self)
 
+
+transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT-J
+
+
+class GPTJ(GPTJForCausalLM):
     @classmethod
     def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
-        return cls.from_pretrained(model_variant, low_cpu_mem_usage=True, **huggingface_kwargs)
+        return cls.from_pretrained(model_variant, **huggingface_kwargs)
     
     def get_embedding_size(self) -> int:
         return self.transformer.wte.weight.shape[1]
@@ -156,6 +163,7 @@ class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
     def call(self, inputs_embeds: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None,
             attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         return self(inputs_embeds=inputs_embeds, labels=labels, attention_mask=attention_mask)
+
 
 class GPTJ_Tokenizer(GPT2Tokenizer):
     @classmethod
