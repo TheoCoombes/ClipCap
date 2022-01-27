@@ -144,6 +144,7 @@ class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
         super().__init__(config)
         print("Quantizing GPTJ...")
         convert_to_int8(self)
+        self.save_pretrained("./gptj/")
         
     
     @classmethod
