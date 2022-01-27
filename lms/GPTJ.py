@@ -149,7 +149,7 @@ def convert_to_int8(model):
 # transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT-J
 
 
-class GPTJ(GPTJForCausalLM):
+class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
     @classmethod
     def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
