@@ -139,8 +139,8 @@ class GPTJModel(transformers.models.gptj.modeling_gptj.GPTJModel):
         convert_to_int8(self)
 
 class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config):
+        super().__init__(config)
         convert_to_int8(self)
 
     @classmethod
