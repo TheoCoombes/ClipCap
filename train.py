@@ -70,14 +70,14 @@ def train(
 
     if only_prefix:
         model = CLIPCaptionPrefixOnly(
-            language_model, prefix_length, clip_prefix_length=clip_prefix_length,
+            language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length,
             prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
             total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
         )
         print("Train only Prefix")
     else:
         model = CLIPCaptionModel(
-            language_model, prefix_length, clip_prefix_length=clip_prefix_length, 
+            language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length, 
             prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
             total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
         )
