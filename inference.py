@@ -167,7 +167,7 @@ def demo_generate_captions(
     
     if text_prefix is not None:
         text_prefix_tokens = torch.tensor(
-            tokenizer.encode_text(text_prefix, truncate=False)
+            tokenizer.encode_text(text_prefix, truncate=False), device=device
         )
         prefix_embed = torch.cat((prefix_embed, text_prefix_tokens), dim=0)
     
