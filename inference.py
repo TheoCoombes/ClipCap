@@ -168,12 +168,11 @@ def demo_generate_captions(
     if text_prefix is not None:
         text_prefix_tokens = torch.tensor(
             tokenizer.encode_text(text_prefix, truncate=False), device=device
-        )
-        print(text_prefix_tokens.shape)
-        text_prefix_tokens = text_prefix_tokens.view(prefix_embed.shape[0], 1, -1)
-        print(text_prefix_tokens.shape)
-        print(prefix_embed.shape)
-        prefix_embed = torch.cat((prefix_embed, text_prefix_tokens), dim=2)
+        ).unsqueeze(0)
+
+        text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
+
+        prefix_embed = torch.cat((prefix_embed, text_prefix_embed), dim=1)
     
     if use_beam_search:
         generated_captions = generate_beam(model, tokenizer, prefix_embed,
