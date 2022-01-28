@@ -19,6 +19,7 @@ def generate_beam(
     tokenizer: GPT2_Tokenizer,
     embed: torch.Tensor,
     number_to_generate: int = 1,
+    text_prefix_tokens: Optional[torch.Tensor] = None,
     beam_size: int = 5,
     entry_length: int = 67,
     temperature: float = 1.0,
@@ -37,7 +38,7 @@ def generate_beam(
     with torch.no_grad():
         for i in range(number_to_generate):
             for _ in range(entry_length):
-                outputs = model.language_model.call(inputs_embeds=embed)
+                outputs = model.language_model.call(input_ids=text_prefix_tokens, inputs_embeds=embed)
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
                 logits = logits.softmax(-1).log()
@@ -97,6 +98,7 @@ def generate_no_beam(
     tokenizer: GPT2_Tokenizer,
     embeds: torch.Tensor,
     number_to_generate: int = 1,
+    text_prefix_tokens: Optional[torch.Tensor] = None,
     entry_length: int = 67,
     top_p: float = 0.8,
     temperature: float = 1.0,
@@ -112,7 +114,7 @@ def generate_no_beam(
     with torch.no_grad():
         for i in range(number_to_generate):
             for _ in range(entry_length):
-                outputs = model.language_model.call(inputs_embeds=embeds)
+                outputs = model.language_model.call(input_ids=text_prefix_tokens, inputs_embeds=embeds)
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
 
@@ -169,17 +171,17 @@ def demo_generate_captions(
         text_prefix_tokens = torch.tensor(
             tokenizer.encode_text(text_prefix, truncate=False), device=device
         ).unsqueeze(0)
-
-        text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
-
-        prefix_embed = torch.cat((prefix_embed, text_prefix_embed), dim=1)
+    else:
+        text_prefix_tokens = None
     
     if use_beam_search:
         generated_captions = generate_beam(model, tokenizer, prefix_embed,
-            number_to_generate=number_to_generate, **generation_kwargs)
+            number_to_generate=number_to_generate, text_prefix_tokens=text_prefix_tokens,
+            **generation_kwargs)
     else:
         generated_captions = generate_no_beam(model, tokenizer, prefix_embed,
-            number_to_generate=number_to_generate, **generation_kwargs)
+            number_to_generate=number_to_generate, text_prefix_tokens=text_prefix_tokens,
+            **generation_kwargs)
     
     if text_prefix is not None:
         generated_captions = [(text_prefix + caption) for caption in generated_captions]

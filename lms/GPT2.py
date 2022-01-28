@@ -14,9 +14,9 @@ class GPT2(GPT2LMHeadModel):
     def get_embedding_text(self, tokens: torch.Tensor) -> torch.Tensor:
         return self.transformer.wte(tokens)
     
-    def call(self, inputs_embeds: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None,
-            attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        return self(inputs_embeds=inputs_embeds, labels=labels, attention_mask=attention_mask)
+    def call(self, input_ids: Optional[torch.Tensor] = None, inputs_embeds: Optional[torch.Tensor] = None,
+            labels: Optional[torch.Tensor] = None, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        return self(input_ids=input_ids, inputs_embeds=inputs_embeds, labels=labels, attention_mask=attention_mask)
 
 
 class GPT2_Tokenizer(GPT2Tokenizer):
