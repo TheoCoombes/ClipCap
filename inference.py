@@ -74,7 +74,7 @@ def generate_beam(
                     has_stopped = has_stopped[next_tokens_source]
                 
                 next_token_embed = model.language_model.get_embedding_text(next_tokens.squeeze()).view(embed.shape[0], 1, -1)
-                embed = torch.cat((embed, next_token_embed), dim=1)
+                embed = torch.cat((embed, next_token_embed), dim=2)
                 has_stopped = has_stopped + next_tokens.eq(stop_token).squeeze()
 
                 if has_stopped.all():
