@@ -98,12 +98,64 @@ def quantize_blockise_lowmemory(matrix: torch.Tensor, chunk_size: int = 2 ** 20)
     absmax = torch.cat(absmaxes)
     return matrix_i8, (absmax, code)
  
+ 
+def convert_to_int8(model):
+    """Convert linear and embedding modules to 8-bit with optional adapters"""
+    for module in list(model.modules()):
+        for name, child in module.named_children():
+            if isinstance(child, nn.Linear):
+                print(name, child)
+                setattr( 
+                    module,
+                    name,
+                    FrozenBNBLinear(
+                        weight=torch.zeros(child.out_features, child.in_features, dtype=torch.uint8),
+                        absmax=torch.zeros((child.weight.numel() - 1) // 4096 + 1),
+                        code=torch.zeros(256),
+                        bias=child.bias,
+                    ),
+                )
+            elif isinstance(child, nn.Embedding):
+                setattr(
+                    module,
+                    name,
+                    FrozenBNBEmbedding(
+                        weight=torch.zeros(child.num_embeddings, child.embedding_dim, dtype=torch.uint8),
+                        absmax=torch.zeros((child.weight.numel() - 1) // 4096 + 1),
+                        code=torch.zeros(256),
+                    )
+                )
+ 
+class GPTJBlock(transformers.models.gptj.modeling_gptj.GPTJBlock):
+    def __init__(self, config):
+        super().__init__(config)
+
+        convert_to_int8(self.attn)
+        convert_to_int8(self.mlp)
 
 
-class GPTJ(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
+class GPTJModel(transformers.models.gptj.modeling_gptj.GPTJModel):
+    def __init__(self, config):
+        super().__init__(config)
+        convert_to_int8(self)
+        
+
+class GPTJForCausalLM(transformers.models.gptj.modeling_gptj.GPTJForCausalLM):
+    def __init__(self, config):
+        super().__init__(config)
+        convert_to_int8(self)
+
+
+transformers.models.gptj.modeling_gptj.GPTJBlock = GPTJBlock  # monkey-patch GPT-J
+
+
+class GPTJ(GPTJForCausalLM):
     @classmethod
-    def create(cls, model_variant: str = "hivemind/gpt-j-6B-8bit", **huggingface_kwargs):
-        return cls.from_pretrained(model_variant, **huggingface_kwargs)
+    def create(cls, model_path: str = "./gptj.pt", **huggingface_kwargs):
+        config = transformers.GPTJConfig.from_pretrained("EleutherAI/gpt-j-6B", **huggingface_kwargs)
+        model = cls(config)
+        model.load_state_dict(torch.load(model_path))
+        return model
     
     def get_embedding_size(self) -> int:
         return self.transformer.wte.weight.shape[1]
