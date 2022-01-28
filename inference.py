@@ -29,7 +29,6 @@ def generate_beam(
     tokens = None
     scores = None
 
-    # .type_as(...) is used to support parallel data in pytorch-lightning
     seq_lengths = torch.ones(beam_size, device=embed.device)
     has_stopped = torch.zeros(beam_size, dtype=torch.bool, device=embed.device)
 
@@ -167,7 +166,9 @@ def demo_generate_captions(
         prefix_embed = model.clip_project(prefix).reshape(1, 40, -1)
     
     if text_prefix is not None:
-        text_prefix_tokens = tokenizer.encode_text(text_prefix, truncate=False)
+        text_prefix_tokens = torch.tensor(
+            tokenizer.encode_text(text_prefix, truncate=False)
+        )
         prefix_embed = torch.cat((prefix_embed, text_prefix_tokens), dim=0)
     
     if use_beam_search:
