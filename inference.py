@@ -176,10 +176,10 @@ def demo_generate_captions(
     
     if use_beam_search:
         generated_captions = generate_beam(model, tokenizer, prefix_embed,
-            number_to_generate=number_to_generate, text_prefix=text_prefix, **generation_kwargs)
+            number_to_generate=number_to_generate, **generation_kwargs)
     else:
         generated_captions = generate_no_beam(model, tokenizer, prefix_embed,
-            number_to_generate=number_to_generate, text_prefix=text_prefix, **generation_kwargs)
+            number_to_generate=number_to_generate, **generation_kwargs)
     
     if text_prefix is not None:
         generated_captions = [(text_prefix + caption) for caption in generated_captions]
