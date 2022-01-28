@@ -169,6 +169,8 @@ def demo_generate_captions(
         text_prefix_tokens = torch.tensor(
             tokenizer.encode_text(text_prefix, truncate=False), device=device
         ).view(prefix_embed.shape[0], 1, -1)
+        print(prefix_embed)
+        print(text_prefix_tokens)
         prefix_embed = torch.cat((prefix_embed, text_prefix_tokens), dim=1)
     
     if use_beam_search:
