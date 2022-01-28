@@ -17,7 +17,7 @@ from lms import GPT2, GPT2_Tokenizer
 def generate_beam(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2_Tokenizer,
-    embed: torch.Tensor,
+    embeds: torch.Tensor,
     number_to_generate: int = 1,
     text_prefix_tokens: Optional[torch.Tensor] = None,
     beam_size: int = 5,
@@ -30,22 +30,25 @@ def generate_beam(
     tokens = None
     scores = None
 
-    seq_lengths = torch.ones(beam_size, device=embed.device)
-    has_stopped = torch.zeros(beam_size, dtype=torch.bool, device=embed.device)
+    seq_lengths = torch.ones(beam_size, device=embeds.device)
+    has_stopped = torch.zeros(beam_size, dtype=torch.bool, device=embeds.device)
 
     generations = []
 
     with torch.no_grad():
+        text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
+        embeds = torch.cat((embeds, text_prefix_embed), dim=1)
+
         for i in range(number_to_generate):
             for _ in range(entry_length):
-                outputs = model.language_model.call(input_ids=text_prefix_tokens, inputs_embeds=embed)
+                outputs = model.language_model.call(inputs_embeds=embeds)
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
                 logits = logits.softmax(-1).log()
 
                 if scores is None:
                     scores, next_tokens = logits.topk(beam_size, -1)
-                    embed = embed.expand(beam_size, *embed.shape[1:])
+                    embeds = embeds.expand(beam_size, *embeds.shape[1:])
                     next_tokens, scores = next_tokens.permute(1, 0), scores.squeeze(0)
                     if tokens is None:
                         tokens = next_tokens
@@ -69,13 +72,13 @@ def generate_beam(
                     tokens = tokens[next_tokens_source]
                     tokens = torch.cat((tokens, next_tokens), dim=1)
 
-                    embed = embed[next_tokens_source]
+                    embeds = embeds[next_tokens_source]
                     scores = scores_sum_average * seq_lengths
 
                     has_stopped = has_stopped[next_tokens_source]
                 
-                next_token_embed = model.language_model.get_embedding_text(next_tokens.squeeze()).view(embed.shape[0], 1, -1)
-                embed = torch.cat((embed, next_token_embed), dim=1)
+                next_token_embed = model.language_model.get_embedding_text(next_tokens.squeeze()).view(embeds.shape[0], 1, -1)
+                embeds = torch.cat((embeds, next_token_embed), dim=1)
                 has_stopped = has_stopped + next_tokens.eq(stop_token).squeeze()
 
                 if has_stopped.all():
@@ -112,9 +115,12 @@ def generate_no_beam(
     generations = []
 
     with torch.no_grad():
+        text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
+        embeds = torch.cat((embeds, text_prefix_embed), dim=1)
+
         for i in range(number_to_generate):
             for _ in range(entry_length):
-                outputs = model.language_model.call(input_ids=text_prefix_tokens, inputs_embeds=embeds)
+                outputs = model.language_model.call(inputs_embeds=embeds)
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
 
