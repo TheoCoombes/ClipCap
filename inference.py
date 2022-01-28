@@ -166,11 +166,9 @@ def demo_generate_captions(
         prefix_embed = model.clip_project(prefix).reshape(1, 40, -1)
     
     if text_prefix is not None:
-        print(prefix_embed)
-        print(text_prefix)
         text_prefix_tokens = torch.tensor(
             tokenizer.encode_text(text_prefix, truncate=False), device=device
-        )
+        ).view(prefix_embed.shape[0], 1, -1)
         prefix_embed = torch.cat((prefix_embed, text_prefix_tokens), dim=1)
     
     if use_beam_search:
