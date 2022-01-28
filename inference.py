@@ -87,7 +87,7 @@ def generate_beam(
             output_texts = [tokenizer.decode_tokens(output[:int(length)]) for output, length in zip(output_list, seq_lengths)]
 
             order = scores.argsort(descending=True)
-            output_texts = [output_texts[i] for i in order]
+            output_texts = [output_texts[i] for i in order][0]
 
             generations.append(output_texts)
     
@@ -142,7 +142,7 @@ def generate_no_beam(
                     break
 
             output_list = list(tokens.squeeze().cpu().numpy())
-            output_text = tokenizer.decode_tokens(output_list)
+            output_text = tokenizer.decode_tokens(output_list)[0]
         
             generations.append(output_text)
     
