@@ -1,13 +1,12 @@
 from torchvision.transforms import Compose
+from typing import Tuple, List, Optional
 import torch.nn.functional as nnf
-from typing import Tuple, List
 from clip.model import CLIP
 from typing import Union
 import skimage.io as io
 from PIL import Image
 import numpy as np
 import torch
-import json
 import clip
 import fire
 
@@ -156,6 +155,7 @@ def demo_generate_captions(
     clip_preproc: Compose,
     image: Image.Image,
     number_to_generate: int = 1,
+    text_prefix: Optional[str] = None,
     use_beam_search: bool = False,
     device: str = "cuda:0",
     **generation_kwargs
@@ -166,12 +166,16 @@ def demo_generate_captions(
         prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
         prefix_embed = model.clip_project(prefix).reshape(1, 40, -1)
     
+    if text_prefix is not None:
+        text_prefix_tokens = tokenizer.encode_text(text_prefix, truncate=False)
+        prefix_embed = torch.cat((prefix_embed, text_prefix_tokens), dim=0)
+    
     if use_beam_search:
         generated_captions = generate_beam(model, tokenizer, prefix_embed,
-            number_to_generate=number_to_generate, **generation_kwargs)
+            number_to_generate=number_to_generate, text_prefix=text_prefix, **generation_kwargs)
     else:
         generated_captions = generate_no_beam(model, tokenizer, prefix_embed,
-            number_to_generate=number_to_generate, **generation_kwargs)
+            number_to_generate=number_to_generate, text_prefix=text_prefix, **generation_kwargs)
     
     return generated_captions, prefix
 
@@ -247,6 +251,7 @@ def _shutterstock_demo(
     checkpoint_path: str,
     shutterstock_path: str,
     number_to_generate: int = 1,
+    text_prefix: Optional[str] = None,
     device: str = "cuda:0",
     use_beam_search: bool = True,
     out_filename_prefix: str = "demo_inference",
@@ -277,7 +282,8 @@ def _shutterstock_demo(
 
         captions, image_features = demo_generate_captions(
             model, tokenizer, clip_model, preprocess, pil_image,
-            use_beam_search=use_beam_search, device=device, number_to_generate=number_to_generate
+            use_beam_search=use_beam_search, device=device,
+            number_to_generate=number_to_generate, text_prefix=text_prefix
         )
 
         url = metadata["src"]
@@ -295,7 +301,7 @@ def _shutterstock_demo(
         similarities = similarities.tolist()
 
         original_sim = similarities[0][0]
-        generated_sims = similarities[0][:1]
+        generated_sims = similarities[0][1:]
 
         best_sim = max(generated_sims)
         best_caption = captions[generated_sims.index(best_sim)]

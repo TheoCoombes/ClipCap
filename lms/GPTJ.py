@@ -155,6 +155,7 @@ class GPTJ(GPTJForCausalLM):
         config = transformers.GPTJConfig.from_pretrained("EleutherAI/gpt-j-6B", **huggingface_kwargs)
         model = cls(config)
         model.load_state_dict(torch.load(model_path))
+        model = model.eval()
         return model
     
     def get_embedding_size(self) -> int:
