@@ -36,9 +36,9 @@ def generate_beam(
     generations = []
 
     with torch.no_grad():
-        if text_prefix_tokens is not None:
-            text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
-            embeds = torch.cat((embeds, text_prefix_embed), dim=1)
+        # if text_prefix_tokens is not None:
+        #     text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
+        #     embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
         for i in range(number_to_generate):
             for _ in range(entry_length):
@@ -116,9 +116,9 @@ def generate_no_beam(
     generations = []
 
     with torch.no_grad():
-        if text_prefix_tokens is not None:
-            text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
-            embeds = torch.cat((embeds, text_prefix_embed), dim=1)
+        # if text_prefix_tokens is not None:
+        #     text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
+        #     embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
         for i in range(number_to_generate):
             for _ in range(entry_length):
@@ -272,6 +272,7 @@ def _shutterstock_demo(
     device: str = "cuda:0",
     use_beam_search: bool = True,
     out_filename_prefix: str = "demo_inference",
+    total_samples: int = 100,
     **kwargs
 ):
     clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
@@ -289,7 +290,7 @@ def _shutterstock_demo(
     samples_path = Path(shutterstock_path)
     sample_data = {}
 
-    for image_file in tqdm(sorted(list(samples_path.glob("*.jpg")), key=lambda x: x.name)[:100], desc='inference'):
+    for image_file in tqdm(sorted(list(samples_path.glob("*.jpg")), key=lambda x: x.name)[:total_samples], desc='inference'):
         image = io.imread(image_file)
         pil_image = Image.fromarray(image)
 
