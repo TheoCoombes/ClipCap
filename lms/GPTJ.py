@@ -1,11 +1,346 @@
-from transformers import GPT2Tokenizer, GPTJConfig
 from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
 from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
+from bitsandbytes.functional import dequantize_blockwise
+from transformers.modeling_utils import PreTrainedModel
+from transformers import GPT2Tokenizer, GPTJConfig
+from transformers.activations import ACT2FN
 from torch.nn import CrossEntropyLoss
 from typing import Optional, Tuple
-import transformers
 from torch import nn
+import transformers
 import torch
+
+
+class FrozenBNBLinear(nn.Module):
+    def __init__(self, weight, absmax, code, bias=None):
+        assert isinstance(bias, nn.Parameter) or bias is None
+        super().__init__()
+        self.out_features, self.in_features = weight.shape
+        self.register_buffer("weight", weight.requires_grad_(False))
+        self.register_buffer("absmax", absmax.requires_grad_(False))
+        self.register_buffer("code", code.requires_grad_(False))
+        self.adapter = None
+        self.bias = bias
+ 
+    def forward(self, input):
+        output = DequantizeAndLinear.apply(input, self.weight, self.absmax, self.code, self.bias)
+        if self.adapter:
+            output += self.adapter(input)
+        return output
+ 
+    @classmethod
+    def from_linear(cls, linear: nn.Linear) -> "FrozenBNBLinear":
+        weights_int8, state = quantize_blockise_lowmemory(linear.weight)
+        return cls(weights_int8, *state, linear.bias)
+ 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.in_features}, {self.out_features})"
+ 
+ 
+class DequantizeAndLinear(torch.autograd.Function): 
+    @staticmethod
+    @custom_fwd
+    def forward(ctx, input: torch.Tensor, weights_quantized: torch.ByteTensor,
+                absmax: torch.FloatTensor, code: torch.FloatTensor, bias: torch.FloatTensor):
+        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
+        ctx.save_for_backward(input, weights_quantized, absmax, code)
+        ctx._has_bias = bias is not None
+        return F.linear(input, weights_deq, bias)
+ 
+    @staticmethod
+    @custom_bwd
+    def backward(ctx, grad_output: torch.Tensor):
+        assert not ctx.needs_input_grad[1] and not ctx.needs_input_grad[2] and not ctx.needs_input_grad[3]
+        input, weights_quantized, absmax, code = ctx.saved_tensors
+        # grad_output: [*batch, out_features]
+        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
+        grad_input = grad_output @ weights_deq
+        grad_bias = grad_output.flatten(0, -2).sum(dim=0) if ctx._has_bias else None
+        return grad_input, None, None, None, grad_bias
+ 
+ 
+class FrozenBNBEmbedding(nn.Module):
+    def __init__(self, weight, absmax, code):
+        super().__init__()
+        self.num_embeddings, self.embedding_dim = weight.shape
+        self.register_buffer("weight", weight.requires_grad_(False))
+        self.register_buffer("absmax", absmax.requires_grad_(False))
+        self.register_buffer("code", code.requires_grad_(False))
+        self.adapter = None
+ 
+    def forward(self, input, **kwargs):
+        with torch.no_grad():
+            # note: both quantuized weights and input indices are *not* differentiable
+            weight_deq = dequantize_blockwise(self.weight, absmax=self.absmax, code=self.code)
+            output = F.embedding(input, weight_deq, **kwargs)
+        if self.adapter:
+            output += self.adapter(input)
+        return output 
+ 
+    @classmethod
+    def from_embedding(cls, embedding: nn.Embedding) -> "FrozenBNBEmbedding":
+        weights_int8, state = quantize_blockise_lowmemory(embedding.weight)
+        return cls(weights_int8, *state)
+ 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.num_embeddings}, {self.embedding_dim})"
+
+
+
+
+
+
+# Start HuggingFace GPT-J Code -----
+
+def fixed_pos_embedding(x, seq_dim=1, seq_len=None):
+    dim = x.shape[-1]
+    if seq_len is None:
+        seq_len = x.shape[seq_dim]
+    inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2) / dim))
+    sinusoid_inp = torch.einsum("i , j -> i j", torch.arange(seq_len), inv_freq).to(x.device).float()
+    return torch.sin(sinusoid_inp), torch.cos(sinusoid_inp)
+
+def rotate_every_two(x):
+    x1 = x[:, :, :, ::2]
+    x2 = x[:, :, :, 1::2]
+    x = torch.stack((-x2, x1), axis=-1)
+    return x.flatten(-2)  # in einsum notation: rearrange(x, '... d j -> ... (d j)')
+
+def apply_rotary_pos_emb(x, sincos, offset=0):
+    sin, cos = map(lambda t: t[None, offset : x.shape[1] + offset, None, :].repeat_interleave(2, 3), sincos)
+    # einsum notation for lambda t: repeat(t[offset:x.shape[1]+offset,:], "n d -> () n () (d j)", j=2)
+    return (x * cos) + (rotate_every_two(x) * sin)
+
+
+class GPTJAttention(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+
+        max_positions = config.max_position_embeddings
+        self.register_buffer(
+            "bias",
+            torch.tril(torch.ones((max_positions, max_positions), dtype=torch.uint8)).view(
+                1, 1, max_positions, max_positions
+            ),
+        )
+        self.register_buffer("masked_bias", torch.tensor(-1e9))
+
+        self.attn_dropout = nn.Dropout(config.attn_pdrop)
+        self.resid_dropout = nn.Dropout(config.resid_pdrop)
+
+        self.embed_dim = config.hidden_size
+        self.num_attention_heads = config.num_attention_heads
+        self.head_dim = self.embed_dim // self.num_attention_heads
+        if self.head_dim * self.num_attention_heads != self.embed_dim:
+            raise ValueError(
+                f"embed_dim must be divisible by num_attention_heads (got `embed_dim`: {self.embed_dim} and `num_attention_heads`: {self.num_attention_heads})."
+            )
+        self.scale_attn = torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32)).to(torch.get_default_dtype())
+
+        self.k_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.v_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.q_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.out_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.rotary_dim = None
+        if config.rotary_dim is not None:
+            self.rotary_dim = config.rotary_dim
+
+    def _split_heads(self, tensor, num_attention_heads, attn_head_size, rotary):
+        """
+        Splits hidden dim into attn_head_size and num_attention_heads
+        """
+        new_shape = tensor.size()[:-1] + (num_attention_heads, attn_head_size)
+        tensor = tensor.view(*new_shape)
+        if rotary:
+            return tensor
+        if len(tensor.shape) == 5:
+            return tensor.permute(0, 1, 3, 2, 4)  # (batch, blocks, head, block_length, head_features)
+        elif len(tensor.shape) == 4:
+            return tensor.permute(0, 2, 1, 3)  # (batch, head, seq_length, head_features)
+        else:
+            raise ValueError(f"Input tensor rank should be one of [4, 5], but is: {len(tensor.shape)}")
+
+    def _merge_heads(self, tensor, num_attention_heads, attn_head_size):
+        """
+        Merges attn_head_size dim and num_attn_heads dim into hidden dim
+        """
+        if len(tensor.shape) == 5:
+            tensor = tensor.permute(0, 1, 3, 2, 4).contiguous()
+        elif len(tensor.shape) == 4:
+            tensor = tensor.permute(0, 2, 1, 3).contiguous()
+        else:
+            raise ValueError(f"Input tensor rank should be one of [4, 5], but is: {len(tensor.shape)}")
+        new_shape = tensor.size()[:-2] + (num_attention_heads * attn_head_size,)
+        return tensor.view(new_shape)
+
+    def _attn(
+        self,
+        query,
+        key,
+        value,
+        attention_mask=None,
+        head_mask=None,
+    ):
+
+        # compute causal mask from causal mask buffer
+        query_length, key_length = query.size(-2), key.size(-2)
+        causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length].bool()
+
+        # Keep the attention weights computation in fp32 to avoid overflow issues
+        query = query.to(torch.float32)
+        key = key.to(torch.float32)
+
+        attn_weights = torch.matmul(query, key.transpose(-1, -2))
+        attn_weights = torch.where(causal_mask, attn_weights, self.masked_bias.to(attn_weights.dtype))
+
+        attn_weights = attn_weights / self.scale_attn
+
+        if attention_mask is not None:
+            # Apply the attention mask
+            attn_weights = attn_weights + attention_mask
+
+        attn_weights = nn.functional.softmax(attn_weights, dim=-1)
+        attn_weights = attn_weights.to(value.dtype)
+        attn_weights = self.attn_dropout(attn_weights)
+
+        # Mask heads if we want to
+        if head_mask is not None:
+            attn_weights = attn_weights * head_mask
+
+        attn_output = torch.matmul(attn_weights, value)
+
+        return attn_output, attn_weights
+
+    def forward(
+        self,
+        hidden_states,
+        attention_mask=None,
+        layer_past=None,
+        head_mask=None,
+        use_cache=False,
+        output_attentions=False,
+    ):
+
+        query = self.q_proj(hidden_states)
+        key = self.k_proj(hidden_states)
+        value = self.v_proj(hidden_states)
+
+        query = self._split_heads(query, self.num_attention_heads, self.head_dim, True)
+        key = self._split_heads(key, self.num_attention_heads, self.head_dim, True)
+        value = self._split_heads(value, self.num_attention_heads, self.head_dim, False)
+
+        seq_len = key.shape[1]
+        offset = 0
+
+        if layer_past is not None:
+            offset = layer_past[0].shape[-2]
+            seq_len += offset
+
+        if self.rotary_dim is not None:
+            k_rot = key[:, :, :, : self.rotary_dim]
+            k_pass = key[:, :, :, self.rotary_dim :]
+
+            q_rot = query[:, :, :, : self.rotary_dim]
+            q_pass = query[:, :, :, self.rotary_dim :]
+
+            sincos = fixed_pos_embedding(k_rot, 1, seq_len=seq_len)
+            k_rot = apply_rotary_pos_emb(k_rot, sincos, offset=offset)
+            q_rot = apply_rotary_pos_emb(q_rot, sincos, offset=offset)
+
+            key = torch.cat([k_rot, k_pass], dim=-1)
+            query = torch.cat([q_rot, q_pass], dim=-1)
+        else:
+            sincos = fixed_pos_embedding(key, 1, seq_len=seq_len)
+            key = apply_rotary_pos_emb(key, sincos, offset=offset)
+            query = apply_rotary_pos_emb(query, sincos, offset=offset)
+
+        key = key.permute(0, 2, 1, 3)
+        query = query.permute(0, 2, 1, 3)
+
+        if layer_past is not None:
+            past_key = layer_past[0]
+            past_value = layer_past[1]
+            key = torch.cat((past_key, key), dim=-2)
+            value = torch.cat((past_value, value), dim=-2)
+
+        if use_cache is True:
+            present = (key, value)
+        else:
+            present = None
+
+        # compute self-attention: V x Softmax(QK^T)
+        attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)
+
+        attn_output = self._merge_heads(attn_output, self.num_attention_heads, self.head_dim)
+        attn_output = self.out_proj(attn_output)
+        attn_output = self.resid_dropout(attn_output)
+
+        outputs = (attn_output, present)
+        if output_attentions:
+            outputs += (attn_weights,)
+
+        return outputs  # a, present, (attentions)
+
+
+class GPTJMLP(nn.Module):
+    def __init__(self, intermediate_size, config):  # in MLP: intermediate_size= 4 * embed_dim
+        super().__init__()
+        embed_dim = config.n_embd
+
+        self.fc_in = nn.Linear(embed_dim, intermediate_size)
+        self.fc_out = nn.Linear(intermediate_size, embed_dim)
+
+        self.act = ACT2FN[config.activation_function]
+        self.dropout = nn.Dropout(config.resid_pdrop)
+
+    def forward(self, hidden_states):
+        hidden_states = self.fc_in(hidden_states)
+        hidden_states = self.act(hidden_states)
+        hidden_states = self.fc_out(hidden_states)
+        hidden_states = self.dropout(hidden_states)
+        return hidden_states
+
+
+class GPTJBlock(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        inner_dim = config.n_inner if config.n_inner is not None else 4 * config.n_embd
+        self.ln_1 = nn.LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
+        self.attn = GPTJAttention(config)
+        self.mlp = GPTJMLP(inner_dim, config)
+
+    def forward(
+        self,
+        hidden_states,
+        layer_past=None,
+        attention_mask=None,
+        head_mask=None,
+        use_cache=False,
+        output_attentions=False,
+    ):
+        residual = hidden_states
+        hidden_states = self.ln_1(hidden_states)
+        attn_outputs = self.attn(
+            hidden_states,
+            layer_past=layer_past,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+        )
+        attn_output = attn_outputs[0]  # output_attn: a, present, (attentions)
+        outputs = attn_outputs[1:]
+
+        feed_forward_hidden_states = self.mlp(hidden_states)
+        hidden_states = attn_output + feed_forward_hidden_states + residual
+
+        if use_cache:
+            outputs = (hidden_states,) + outputs
+        else:
+            outputs = (hidden_states,) + outputs[1:]
+
+        return outputs  # hidden_states, present, (attentions)
+
 
 class GPTJPreTrainedModel(PreTrainedModel):
     """
