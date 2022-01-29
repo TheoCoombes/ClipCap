@@ -159,3 +159,5 @@ class TokenPrefixDataset(IterableDataset):
             prefix_reader.close()
             token_reader.close()
             mask_reader.close()
+
+            file_index += 1
