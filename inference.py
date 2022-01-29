@@ -271,6 +271,7 @@ def _shutterstock_demo(
     text_prefix: Optional[str] = None,
     device: str = "cuda:0",
     use_beam_search: bool = True,
+    prefix_only: bool = True,
     out_filename_prefix: str = "demo_inference",
     total_samples: int = 100,
     **kwargs
@@ -279,7 +280,11 @@ def _shutterstock_demo(
     lm = GPT2.create("gpt2-xl")
     tokenizer = GPT2_Tokenizer.create("gpt2-xl")
 
-    model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm, **kwargs)
+    if prefix_only:
+        model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm, **kwargs)
+    else:
+        model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm, **kwargs)
+    
     model = model.to(device)
     model = model.eval()
 
