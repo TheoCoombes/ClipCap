@@ -1,7 +1,6 @@
 """" dataset.py contains a modified version of the `NumpyMatrixReader` from criteo/autofaiss. """
 
 from torch.utils.data import IterableDataset
-from bisect import bisect
 from typing import Tuple, Iterator
 from pathlib import Path
 from abc import ABC
