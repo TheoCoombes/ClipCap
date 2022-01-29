@@ -154,10 +154,10 @@ class GPTJAttention(nn.Module):
             )
         self.scale_attn = torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32)).to(torch.get_default_dtype())
 
-        self.k_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
-        self.v_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
-        self.q_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
-        self.out_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=False)
+        self.k_proj = FrozenBNBLinear(self.embed_dim, self.embed_dim, bias=False)
+        self.v_proj = FrozenBNBLinear(self.embed_dim, self.embed_dim, bias=False)
+        self.q_proj = FrozenBNBLinear(self.embed_dim, self.embed_dim, bias=False)
+        self.out_proj = FrozenBNBLinear(self.embed_dim, self.embed_dim, bias=False)
         self.rotary_dim = None
         if config.rotary_dim is not None:
             self.rotary_dim = config.rotary_dim
@@ -304,8 +304,8 @@ class GPTJMLP(nn.Module):
         super().__init__()
         embed_dim = config.n_embd
 
-        self.fc_in = nn.Linear(embed_dim, intermediate_size)
-        self.fc_out = nn.Linear(intermediate_size, embed_dim)
+        self.fc_in = FrozenBNBLinear(embed_dim, intermediate_size)
+        self.fc_out = FrozenBNBLinear(intermediate_size, embed_dim)
 
         self.act = ACT2FN[config.activation_function]
         self.dropout = nn.Dropout(config.resid_pdrop)
@@ -400,7 +400,7 @@ class GPTJModel(GPTJPreTrainedModel):
 
         self.embed_dim = config.n_embd
         self.vocab_size = config.vocab_size
-        self.wte = nn.Embedding(config.vocab_size, self.embed_dim)
+        self.wte = FrozenBNBEmbedding(config.vocab_size, self.embed_dim)
         self.drop = nn.Dropout(config.embd_pdrop)
         self.h = nn.ModuleList([GPTJBlock(config) for _ in range(config.n_layer)])
         self.ln_f = nn.LayerNorm(self.embed_dim, eps=config.layer_norm_epsilon)
@@ -623,7 +623,7 @@ class GPTJForCausalLM(GPTJPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.transformer = GPTJModel(config)
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size)
+        self.lm_head = FrozenBNBLinear(config.n_embd, config.vocab_size)
 
         # Model parallel
         self.model_parallel = False
