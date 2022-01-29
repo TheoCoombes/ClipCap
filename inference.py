@@ -271,7 +271,7 @@ def _shutterstock_demo(
     text_prefix: Optional[str] = None,
     device: str = "cuda:0",
     use_beam_search: bool = True,
-    prefix_only: bool = True,
+    prefix_only: bool = False,
     out_filename_prefix: str = "demo_inference",
     total_samples: int = 100,
     **kwargs
@@ -281,9 +281,9 @@ def _shutterstock_demo(
     tokenizer = GPT2_Tokenizer.create("gpt2-xl")
 
     if prefix_only:
-        model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm, **kwargs)
+        model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm)
     else:
-        model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm, **kwargs)
+        model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm)
     
     model = model.to(device)
     model = model.eval()
@@ -306,7 +306,7 @@ def _shutterstock_demo(
         captions, image_features = demo_generate_captions(
             model, tokenizer, clip_model, preprocess, pil_image,
             use_beam_search=use_beam_search, device=device,
-            number_to_generate=number_to_generate, text_prefix=text_prefix
+            number_to_generate=number_to_generate, text_prefix=text_prefix, **kwargs
         )
 
         url = metadata["src"]
