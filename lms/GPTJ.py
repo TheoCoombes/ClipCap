@@ -1,14 +1,31 @@
 from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
 from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
-from bitsandbytes.functional import dequantize_blockwise
+from bitsandbytes.functional import dequantize_blockwise, quantize_blockwise
 from transformers.modeling_utils import PreTrainedModel
 from transformers import GPT2Tokenizer, GPTJConfig
+from torch.cuda.amp import custom_fwd, custom_bwd
 from transformers.activations import ACT2FN
 from torch.nn import CrossEntropyLoss
 from typing import Optional, Tuple
 from torch import nn
 import transformers
 import torch
+
+def quantize_blockise_lowmemory(matrix: torch.Tensor, chunk_size: int = 2 ** 20):
+    assert chunk_size % 4096 == 0
+    code = None
+    chunks = []
+    absmaxes = []
+    flat_tensor = matrix.view(-1)
+    for i in range((matrix.numel() - 1) // chunk_size + 1):
+        input_chunk = flat_tensor[i * chunk_size: (i + 1) * chunk_size].clone()
+        quantized_chunk, (absmax_chunk, code) = quantize_blockwise(input_chunk, code=code)
+        chunks.append(quantized_chunk)
+        absmaxes.append(absmax_chunk)
+ 
+    matrix_i8 = torch.cat(chunks).reshape_as(matrix)
+    absmax = torch.cat(absmaxes)
+    return matrix_i8, (absmax, code)
 
 
 class FrozenBNBLinear(nn.Module):
