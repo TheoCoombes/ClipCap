@@ -36,8 +36,9 @@ def generate_beam(
     generations = []
 
     with torch.no_grad():
-        text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
-        embeds = torch.cat((embeds, text_prefix_embed), dim=1)
+        if text_prefix_tokens is not None:
+            text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
+            embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
         for i in range(number_to_generate):
             for _ in range(entry_length):
