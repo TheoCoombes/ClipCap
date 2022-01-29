@@ -54,7 +54,7 @@ def train(
     gpu_devices: str = "0",
     **huggingface_kwargs
 ):
-    dataset = TokenPrefixDataset(data_dir, normalize_prefix=normalize_prefix)
+    dataset = TokenPrefixDataset(data_dir, batch_size=batch_size, normalize_prefix=normalize_prefix)
     prefix_size = 640 if is_resnet_clip else 512
 
     total_steps = (len(dataset) // batch_size) * epochs
@@ -84,8 +84,6 @@ def train(
             total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
         )
         print("Train both prefix and language model")
-    
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=True)
 
     # Easier to use GPU args. `-1` = use all, `0` = use gpu 0, `0,1` = use gpus 1 and 2 etc.
     if isinstance(gpu_devices, int) and gpu_devices != -1:
@@ -105,7 +103,7 @@ def train(
         kwargs = {}
 
     trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
-    trainer.fit(model, dataloader)
+    trainer.fit(model, dataset) # No DL is needed as batches are already implemented in the DS.
 
     trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")
 
