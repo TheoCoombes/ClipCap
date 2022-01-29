@@ -40,7 +40,7 @@ def generate_beam(
             text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
-        for i in range(number_to_generate):
+        for temperature in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
             for _ in range(entry_length):
                 outputs = model.language_model.call(inputs_embeds=embeds)
                 logits = outputs.logits
