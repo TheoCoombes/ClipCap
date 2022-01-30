@@ -1,0 +1,8 @@
+torch
+torchvision
+pytorch-lightning
+transformers
+git+https://github.com/OpenAI/CLIP.git
+scikit-image
+numpy
+fire
