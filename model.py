@@ -6,11 +6,11 @@ import torch.nn as nn
 import torch
 
 from layers import TransformerMapper, MLP
-from lms import GPT2, GPTJ
+from lms import GPT2, GPTJ, T0
 
 
 class CLIPCaptionModel(pl.LightningModule):
-    def __init__(self, language_model: Union[GPT2, GPTJ], prefix_length: int = 40, clip_prefix_length: int = 40,
+    def __init__(self, language_model: Union[GPT2, GPTJ, T0], prefix_length: int = 40, clip_prefix_length: int = 40,
                  prefix_size: int = 512, num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5,
                  num_warmup_steps: int = 5000, total_steps=None, use_8_bit_optimizers: bool = False):
         
