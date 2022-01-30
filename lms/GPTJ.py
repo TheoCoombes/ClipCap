@@ -7,6 +7,7 @@ from torch.cuda.amp import custom_fwd, custom_bwd
 from transformers.activations import ACT2FN
 from torch.nn import CrossEntropyLoss
 from typing import Optional, Tuple
+import torch.nn.functional as F
 from torch import nn
 import transformers
 import torch
@@ -26,7 +27,6 @@ def quantize_blockise_lowmemory(matrix: torch.Tensor, chunk_size: int = 2 ** 20)
     matrix_i8 = torch.cat(chunks).reshape_as(matrix)
     absmax = torch.cat(absmaxes)
     return matrix_i8, (absmax, code)
-
 
 class FrozenBNBLinear(nn.Module):
     def __init__(self, weight, absmax, code, bias=None):
@@ -52,7 +52,6 @@ class FrozenBNBLinear(nn.Module):
  
     def __repr__(self):
         return f"{self.__class__.__name__}({self.in_features}, {self.out_features})"
- 
  
 class DequantizeAndLinear(torch.autograd.Function): 
     @staticmethod
