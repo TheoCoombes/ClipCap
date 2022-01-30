@@ -6,3 +6,6 @@ git+https://github.com/OpenAI/CLIP.git
 scikit-image
 numpy
 fire
+tqdm
+ffspec
+pandas
