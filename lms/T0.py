@@ -24,8 +24,11 @@ class T0_Tokenizer(T5Tokenizer):
     def create(cls, model_variant: str = "bigscience/T0pp", **huggingface_kwargs):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
     
-    def encode_text(self, text: str, truncate: bool = False) -> torch.Tensor:
-        return self.encode(text, truncate=truncate)
+    def encode_text(self, text: str, max_token_length: Optional[int] = None) -> torch.Tensor:
+        tokens = self.encode(text)
+        if max_token_length is not None:
+            tokens = tokens[:max_token_length]
+        return tokens
     
     def decode_tokens(self, tokens: torch.Tensor) -> str:
         return self.decode(tokens)
