@@ -20,8 +20,8 @@ class FrozenBNBLinear(nn.Linear):
         }
 
         self.adapter = None
-        self.absmax = torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs)
-        self.code = torch.zeros(256, **factory_kwargs)
+        self.absmax = nn.Parameter(torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs), requires_grad=False)
+        self.code = nn.Parameter(torch.zeros(256, **factory_kwargs), requires_grad=False)
  
     def forward(self, input):
         output = DequantizeAndLinear.apply(input, self.weight, self.absmax, self.code, self.bias)
@@ -62,8 +62,8 @@ class FrozenBNBEmbedding(nn.Embedding):
             'dtype': kwargs.get("dtype", None)
         }
 
-        self.absmax = torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs)
-        self.code = torch.zeros(256, **factory_kwargs)
+        self.absmax = nn.Parameter(torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs), requires_grad=False)
+        self.code = nn.Parameter(torch.zeros(256, **factory_kwargs), requires_grad=False)
         self.adapter = None
  
     def forward(self, input, **kwargs):
