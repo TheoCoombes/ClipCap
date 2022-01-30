@@ -9,14 +9,14 @@ class T0(T5ForConditionalGeneration):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
 
     def get_embedding_size(self) -> int:
-        return self.encoder.weight.shape[1]
+        return self.encoder.embed_tokens.weight.shape[1]
     
     def get_embedding_text(self, tokens: torch.Tensor) -> torch.Tensor:
         return self.encoder.embed_tokens(tokens)
     
     def call(self, inputs_embeds: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None,
             attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        return self(inputs_embeds=inputs_embeds, labels=labels, attention_mask=attention_mask)
+        return self(inputs_embeds=inputs_embeds, decoder_inputs_embeds=inputs_embeds, labels=labels, attention_mask=attention_mask)
 
 
 class T0_Tokenizer(T5Tokenizer):
