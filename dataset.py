@@ -7,11 +7,13 @@ from abc import ABC
 import numpy as np
 import torch
 import re
+import os
 
 def _read_numpy_header(f):
+    f.seek(0, os.SEEK_END)
+    file_size = f.tell()
     f.seek(0)
 
-    file_size = f.size if isinstance(f.size, int) else f.size()
     first_line = f.read(
         min(file_size, 300)
     ).split(b"\n")[0]
