@@ -11,21 +11,14 @@ import torch.nn.functional as F
 from torch import nn
 import torch
 
-class FrozenBNBLinear(nn.Module):
-    def __init__(self, in_features: int, out_features: int, bias: bool = True,
-                 device=None, dtype=None) -> None:
-        super().__init__()
-        factory_kwargs = {'device': device, 'dtype': dtype}
+class FrozenBNBLinear(nn.Linear):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        factory_kwargs = {
+            'device': kwargs.get("device", None),
+            'dtype': kwargs.get("dtype", None)
+        }
 
-        self.in_features = in_features
-        self.out_features = out_features
-
-        self.weight = nn.Parameter(torch.empty((out_features, in_features), **factory_kwargs))
-        if bias:
-            self.bias = nn.Parameter(torch.empty(out_features, **factory_kwargs))
-        else:
-            self.register_parameter('bias', None)
-        
         self.adapter = None
         self.absmax = torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs)
         self.code = torch.zeros(256, **factory_kwargs)
@@ -61,37 +54,14 @@ class DequantizeAndLinear(torch.autograd.Function):
         return grad_input, None, None, None, grad_bias
  
  
-class FrozenBNBEmbedding(nn.Module):
-    def __init__(self, num_embeddings: int, embedding_dim: int, padding_idx: Optional[int] = None,
-                 max_norm: Optional[float] = None, norm_type: float = 2., scale_grad_by_freq: bool = False,
-                 sparse: bool = False, _weight: Optional[torch.Tensor] = None,
-                 device=None, dtype=None) -> None:
-        super().__init__()
-        factory_kwargs = {'device': device, 'dtype': dtype}
-
-        self.num_embeddings = num_embeddings
-        self.embedding_dim = embedding_dim
-
-        if padding_idx is not None:
-            if padding_idx > 0:
-                assert padding_idx < self.num_embeddings, 'Padding_idx must be within num_embeddings'
-            elif padding_idx < 0:
-                assert padding_idx >= -self.num_embeddings, 'Padding_idx must be within num_embeddings'
-                padding_idx = self.num_embeddings + padding_idx
+class FrozenBNBEmbedding(nn.Embedding):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        factory_kwargs = {
+            'device': kwargs.get("device", None),
+            'dtype': kwargs.get("dtype", None)
+        }
         
-        self.padding_idx = padding_idx
-        self.max_norm = max_norm
-        self.norm_type = norm_type
-        self.scale_grad_by_freq = scale_grad_by_freq
-        if _weight is None:
-            self.weight = nn.Parameter(torch.empty((num_embeddings, embedding_dim), **factory_kwargs))
-            self.reset_parameters()
-        else:
-            assert list(_weight.shape) == [num_embeddings, embedding_dim], \
-                'Shape of weight does not match num_embeddings and embedding_dim'
-            self.weight = nn.Parameter(_weight)
-
-        self.sparse = sparse
         self.absmax = torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs)
         self.code = torch.zeros(256, **factory_kwargs)
         self.adapter = None
