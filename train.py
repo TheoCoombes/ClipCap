@@ -41,6 +41,7 @@ def train(
     save_every_epochs: int = 1,
     save_every_steps: int = 10000,
     prefix_length: int = 10,
+    prefix_size: int = 512,
     clip_prefix_length: int = 10,
     language_model_type = "gpt2",
     language_model_variant = "gpt2-xl",
@@ -55,7 +56,6 @@ def train(
     **huggingface_kwargs
 ):
     dataset = TokenPrefixDataset(data_dir, batch_size=batch_size, normalize_prefix=normalize_prefix)
-    prefix_size = 640 if is_resnet_clip else 512
 
     total_steps = (len(dataset) // batch_size) * epochs
 
