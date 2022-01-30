@@ -7,5 +7,5 @@ scikit-image
 numpy
 fire
 tqdm
-ffspec
+fsspec
 pandas
