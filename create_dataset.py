@@ -3,8 +3,7 @@
 from torch.utils.data.dataloader import default_collate
 from PIL import Image, UnidentifiedImageError
 from torch.utils.data import DataLoader
-from lms import LMTokenizer
-from typing import Tuple
+from typing import Tuple, Optional
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
@@ -38,7 +37,8 @@ def get_image_dataset():
     class ImageDataset(Dataset):
         """ImageDataset is a pytorch Dataset exposing image and text tensors from a folder of image and text"""
 
-        def __init__(self, preprocess, folder, tokenizer_model="gpt2", max_token_length=100, prefix_length=10):
+        def __init__(self, preprocess, folder, tokenizer_model_type: str = "gpt2", tokenizer_model_variant: str = "",
+                     max_token_length: int = 100, prefix_length: int = 10):
             super().__init__()
 
             path = Path(folder)
@@ -62,7 +62,19 @@ def get_image_dataset():
 
             self.keys = list(keys)
             
-            self.tokenizer = LMTokenizer.create(tokenizer_model)
+            if tokenizer_model_type == "gpt2":
+                from lms import GPT2_Tokenizer
+                tokenizer = GPT2_Tokenizer.create(tokenizer_model_variant)
+            elif tokenizer_model_type in ("gptj", "gpt-j"):
+                from lms import GPTJ_Tokenizer
+                tokenizer = GPTJ_Tokenizer.create(tokenizer_model_variant)
+            elif tokenizer_model_type in ("t5", "t0"):
+                from lms import T0_Tokenizer
+                tokenizer = T0_Tokenizer.create(tokenizer_model_variant)
+            else:
+                raise ValueError(f"invalid tokenizer model type: '{tokenizer_model_type}' (expected gpt2/gpt-j/t0/t5)")
+
+            self.tokenizer = tokenizer
             self.max_token_length = max_token_length
             self.prefix_length = prefix_length
             
@@ -108,20 +120,32 @@ def get_image_dataset():
 def create_webdataset(
     urls,
     image_transform,
-    image_key="jpg",
-    caption_key="txt",
-    caption_in_metadata=False,
-    cache_path=None,
-    tokenizer_model="gpt2",
-    max_token_length=100,
-    prefix_length=10
+    image_key: str = "jpg",
+    caption_key: str = "txt",
+    caption_in_metadata: bool = False,
+    cache_path: Optional[str] = None,
+    tokenizer_model_type: str = "gpt2",
+    tokenizer_model_variant: str = "gpt2-xl",
+    max_token_length: int = 100,
+    prefix_length: int = 10
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
     import webdataset as wds
 
     dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10 ** 10, handler=wds.handlers.warn_and_continue)
     
-    tokenizer = LMTokenizer.create(tokenizer_model)
+    if tokenizer_model_type == "gpt2":
+        from lms import GPT2_Tokenizer
+        tokenizer = GPT2_Tokenizer.create(tokenizer_model_variant)
+    elif tokenizer_model_type in ("gptj", "gpt-j"):
+        from lms import GPTJ_Tokenizer
+        tokenizer = GPTJ_Tokenizer.create(tokenizer_model_variant)
+    elif tokenizer_model_type in ("t5", "t0"):
+        from lms import T0_Tokenizer
+        tokenizer = T0_Tokenizer.create(tokenizer_model_variant)
+    else:
+        raise ValueError(f"invalid tokenizer model type: '{tokenizer_model_type}' (expected gpt2/gpt-j/t0/t5)")
+
     tokenizer.add_special_tokens({'pad_token': tokenizer.eos_token})
 
     def filter_dataset(item):
@@ -291,19 +315,20 @@ class OutputSink:
 
 
 def clip_inference(
-    input_dataset,
-    output_folder,
-    input_format="files",
-    cache_path=None,
-    batch_size=256,
-    num_prepro_workers=8,
-    write_batch_size=10 ** 6,
-    subset_size=None,
-    wds_image_key="jpg",
-    wds_caption_key="txt",
+    input_dataset: str,
+    output_folder: str,
+    input_format: str = "files",
+    cache_path: Optional[str] = None,
+    batch_size: int = 256,
+    num_prepro_workers: int = 8,
+    write_batch_size: int = (10 ** 6),
+    subset_size: Optional[int] = None,
+    wds_image_key: str = "jpg",
+    wds_caption_key: str = "txt",
     wds_caption_in_metadata=False,
-    clip_model="ViT-B/32",
-    text_tokenizer_model="gpt2",
+    clip_model: str = "ViT-B/32",
+    tokenizer_model_type: str = "gpt2",
+    tokenizer_model_variant: str = "gpt2-xl",
     max_token_length=100,
     prefix_length=10,
     device="cuda:0"
@@ -313,7 +338,14 @@ def clip_inference(
     model, preprocess = clip.load(clip_model, device=device, jit=False)
 
     if input_format == "files":
-        dataset = get_image_dataset()(preprocess, input_dataset, tokenizer_model=text_tokenizer_model, max_token_length=max_token_length, prefix_length=prefix_length)
+        dataset = get_image_dataset()(
+            preprocess,
+            input_dataset,
+            tokenizer_model_type=tokenizer_model_type,
+            tokenizer_model_variant=tokenizer_model_variant,
+            max_token_length=max_token_length,
+            prefix_length=prefix_length
+        )
     elif input_format == "webdataset":
         dataset = create_webdataset(
             input_dataset,
@@ -322,7 +354,8 @@ def clip_inference(
             caption_key=wds_caption_key,
             caption_in_metadata=wds_caption_in_metadata,
             cache_path=cache_path,
-            tokenizer_model=text_tokenizer_model,
+            tokenizer_model_type=tokenizer_model_type,
+            tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length,
             prefix_length=prefix_length
         )
