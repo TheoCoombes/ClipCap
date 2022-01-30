@@ -61,7 +61,7 @@ class FrozenBNBEmbedding(nn.Embedding):
             'device': kwargs.get("device", None),
             'dtype': kwargs.get("dtype", None)
         }
-        
+
         self.absmax = torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs)
         self.code = torch.zeros(256, **factory_kwargs)
         self.adapter = None
@@ -737,10 +737,10 @@ class GPTJForCausalLM(GPTJPreTrainedModel):
 
 class GPTJ(GPTJForCausalLM):
     @classmethod
-    def create(cls, model_path: str = "./gptj.pt", **huggingface_kwargs):
+    def create(cls, model_path: str = "./gptj.pt", map_location: str = "cpu", **huggingface_kwargs):
         config = GPTJConfig.from_pretrained("EleutherAI/gpt-j-6B", **huggingface_kwargs)
         model = cls(config)
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path, map_location=map_location))
         model = model.eval()
         return model
     
