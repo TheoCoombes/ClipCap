@@ -84,8 +84,9 @@ class TokenPrefixDataset(IterableDataset):
         
         for i, file in enumerate(self.prefix_files):
             self.start_indices[i] = self.sample_count
-            with NumpyMatrixReader(file) as _reader:
-                self.sample_count += _reader.get_row_count()
+            _reader = NumpyMatrixReader(file)
+            self.sample_count += _reader.get_row_count()
+            _reader.close()
     
     def __len__(self):
         return self.sample_count
