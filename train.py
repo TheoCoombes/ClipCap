@@ -49,7 +49,6 @@ def train(
     only_prefix: bool = False,
     mapping_type: str = "mlp",
     num_layers: int = 8,
-    is_resnet_clip: bool = False,
     normalize_prefix: bool = False,
     use_8_bit_optimizers: bool = False,
     gpu_devices: str = "0",
@@ -63,8 +62,7 @@ def train(
         language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
     elif language_model_type in ("gptj", "gpt-j"):
         language_model = GPTJ.create(language_model_variant, **huggingface_kwargs)
-        #torch.save(language_model, "gptj.pt")
-    elif language_model in ("t0", "T5"):
+    elif language_model_type in ("t0", "T5"):
         language_model = T0.create(language_model_variant, **huggingface_kwargs)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' or 'gpt2')")
@@ -96,7 +94,7 @@ def train(
         save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
     )
     
-    dataloader = DataLoader(dataset, batch_size=1, prefetch_factor=5, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=1, prefetch_factor=5, shuffle=False) # batch_size=1 as the dataset implements batching.
 
     if "," in str(gpu_devices) or str(gpu_devices) == "-1":
         from pytorch_lightning.plugins import DDPPlugin
