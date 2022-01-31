@@ -83,6 +83,12 @@ class CLIPCaptionModel(pl.LightningModule):
     
     def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int):
         tokens, mask, prefix = batch
+
+        # Fix for custom dataloader.
+        tokens = tokens.squeeze()
+        mask = mask.squeeze()
+        prefix = prefix.squeeze()
+
         outputs = self(tokens, prefix, mask)
 
         logits = outputs.logits[:, self.prefix_length - 1: -1]
