@@ -149,9 +149,15 @@ class TokenPrefixDataset(IterableDataset):
                     overflow_batch = None
 
                 # Convert np array into tensors.
-                tokens = torch.from_numpy(tokens_np)
-                masks = torch.from_numpy(mask_np)
-                prefixes = torch.from_numpy(prefix_np)
+                tokens = torch.from_numpy(
+                    np.array(tokens_np, dtype=np.int64)
+                )
+                masks = torch.from_numpy(
+                    np.array(mask_np, dtype=np.float32)
+                )
+                prefixes = torch.from_numpy(
+                    np.array(prefix_np, dtype=np.float32)
+                )
             
                 if self.normalize_prefix:
                     prefixes = prefixes / prefixes.norm(2, -1)
