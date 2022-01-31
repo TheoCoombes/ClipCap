@@ -94,7 +94,7 @@ def train(
         save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
     )
     
-    dataloader = DataLoader(dataset, batch_size=1, prefetch_factor=5, shuffle=False) # batch_size=1 as the dataset implements batching.
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False) # batch_size=1 as the dataset implements batching.
 
     if "," in str(gpu_devices) or str(gpu_devices) == "-1":
         from pytorch_lightning.plugins import DDPPlugin
