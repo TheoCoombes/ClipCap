@@ -7,7 +7,7 @@ import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
 from dataset import TokenPrefixDataset
-from lms import GPT2, GPTJ
+from lms import GPT2, GPTJ, T0
 
 class CheckpointSaver(pl.Callback):
     def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1,
@@ -64,6 +64,8 @@ def train(
     elif language_model_type in ("gptj", "gpt-j"):
         language_model = GPTJ.create(language_model_variant, **huggingface_kwargs)
         #torch.save(language_model, "gptj.pt")
+    elif language_model in ("t0", "T5"):
+        language_model = T0.create(language_model_variant, **huggingface_kwargs)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' or 'gpt2')")
 
