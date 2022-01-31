@@ -95,6 +95,8 @@ def train(
     checkpoint_saver = CheckpointSaver(output_path, output_filename_prefix,
         save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
     )
+    
+    dataloader = DataLoader(dataset, batch_size=1, prefetch_factor=5, shuffle=False)
 
     if "," in str(gpu_devices) or str(gpu_devices) == "-1":
         from pytorch_lightning.plugins import DDPPlugin
@@ -105,7 +107,7 @@ def train(
         kwargs = {}
 
     trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
-    trainer.fit(model, dataset) # No DL is needed as batches are already implemented in the DS.
+    trainer.fit(model, dataloader)
 
     trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")
 
