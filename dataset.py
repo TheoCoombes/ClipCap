@@ -21,7 +21,7 @@ def _read_numpy_header(f):
     result = re.search(r"'shape': \(([0-9]+), ([0-9]+)\)", str(first_line))
     shape = (int(result.group(1)), int(result.group(2)))
 
-    dtype = re.search(r"'descr': '([<f0-9]+)'", str(first_line)).group(1)
+    dtype = re.search(r"'descr': '([<(if)0-9]+)'", str(first_line)).group(1)
 
     end = len(first_line) + 1  # the first line content and the endline
     f.seek(0)
