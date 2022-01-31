@@ -17,7 +17,7 @@ class CLIPCaptionModel(pl.LightningModule):
         super().__init__()
 
         # Save hparams for easy model loading.
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["language_model"])
         
         # Save hparams as class attributes for better readability.
         self.language_model = language_model
