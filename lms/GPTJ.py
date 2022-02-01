@@ -23,7 +23,7 @@ class FrozenBNBLinear(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.weight = self.register_buffer("weight", 
-            torch.empty((out_features, in_features), device=device, dtype=torch.uint8, requires_grad=False)
+            torch.zeros((out_features, in_features), device=device, dtype=torch.uint8, requires_grad=False)
         )
         if bias:
             self.bias = nn.Parameter(torch.empty(out_features, device=device))
