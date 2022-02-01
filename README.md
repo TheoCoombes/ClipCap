@@ -2,7 +2,7 @@
 [WIP] Using CLIP+GPT2 to generate captions from images.
 
 ## Preprocessing Datasets
-The preprocessor allows for both webdataset and plain file datasets, and can be executed like so:
+You can preprocess existing datasets using the `create_dataset.py` script:
 ```bash
 python3 create_dataset.py \
     --input_dataset "./webdataset/{000..123}.tar"
@@ -20,3 +20,25 @@ python3 create_dataset.py \
     --device "cuda:0"                   # the cuda device to be used
 ```
 All of the preprocessor's arguments can be found at the [clip_inference(...) method](https://github.com/TheoCoombes/CLIP-Image-Captioning/blob/main/create_dataset.py#L317).
+
+## Training
+You can train new models using preprocessed datasets using the `train.py` script:
+```bash
+python3 train.py \
+    --data_dir "./preprocessed_dataset/"
+    --output_dir "./preprocessed_dataset/"
+    --output_filename_prefix "demo_model" # output for the model files, e.g. 'demo_model_latest.ckpt'
+    --epochs 5
+    --save_every_epochs 1 # save the model every x epochs, e.g. 'demo_model_0.ckpt'
+    --save_every_steps 10000 # save the 
+    --prefix_length 40
+    --prefix_size 512 # the output shape of the CLIP embeddings
+    --mapping_type "transformer" # the projection mapping type, either 'transformer' or 'mlp'
+    --only_prefix # trains only the transformer/mlp layer, and does not finetune the language model
+    --num_layers 8 # the number of layers for the mapping type
+    --normalize_prefix # normalizes the clip embeddings for training
+    --use_8_bit_optimizers # [EXPERIMENTAL] sets the AdamW optimzer to be an 8-bit AdamW from the bitsandbytes library.
+    --gpu_devices "0" # sets the training GPU device(s) to use. "<number>" / "<number>,<number>,..." / "-1" for all
+    **huggingface_kwargs # to provide kwargs for huggingface downloads etc.
+```
+All of the trainer's arguments can be found at the [train(...) method](https://github.com/TheoCoombes/CLIP-Image-Captioning/blob/main/train.py#L36).
