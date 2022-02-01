@@ -31,8 +31,8 @@ class FrozenBNBLinear(nn.Module):
             self.register_parameter('bias', None)
         
         self.adapter = None
-        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
-        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
+        self.register_parameter("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
+        self.register_parameter("code", torch.zeros(256, device=device, requires_grad=False))
 
     def reset_parameters(self) -> None:
         # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
@@ -88,7 +88,7 @@ class FrozenBNBEmbedding(nn.Module):
         self.scale_grad_by_freq = scale_grad_by_freq
 
         if _weight is None:
-            self.register_buffer("weight",
+            self.register_parameter("weight",
                 torch.zeros((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
             )
         else:
@@ -97,8 +97,8 @@ class FrozenBNBEmbedding(nn.Module):
             self.register_buffer("weight", _weight.requires_grad_(False))
         
         self.adapter = None
-        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
-        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
+        self.register_parameter("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
+        self.register_parameter("code", torch.zeros(256, device=device, requires_grad=False))
 
         self.sparse = sparse
 
