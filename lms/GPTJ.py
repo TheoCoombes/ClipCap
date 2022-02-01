@@ -74,7 +74,7 @@ class FrozenBNBEmbedding(nn.Module):
     def __init__(self, num_embeddings: int, embedding_dim: int, padding_idx: Optional[int] = None,
                  max_norm: Optional[float] = None, norm_type: float = 2., scale_grad_by_freq: bool = False,
                  sparse: bool = False, _weight: Optional[torch.Tensor] = None,
-                 device=None, dtype=None) -> None:
+                 device=None) -> None:
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
@@ -91,9 +91,9 @@ class FrozenBNBEmbedding(nn.Module):
 
         if _weight is None:
             self.register_buffer("weight",
-                torch.empty((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
+                torch.zeros((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
             )
-            #self.reset_parameters()
+            self.reset_parameters()
         else:
             assert list(_weight.shape) == [num_embeddings, embedding_dim], \
                 'Shape of weight does not match num_embeddings and embedding_dim'
