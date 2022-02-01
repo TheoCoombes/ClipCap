@@ -34,7 +34,7 @@ class FrozenBNBLinear(nn.Module):
         self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
         self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
 
-        self.reset_parameters()
+        #self.reset_parameters()
 
     def reset_parameters(self) -> None:
         # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
