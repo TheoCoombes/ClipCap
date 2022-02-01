@@ -89,10 +89,6 @@ class FrozenBNBEmbedding(nn.Module):
         self.norm_type = norm_type
         self.scale_grad_by_freq = scale_grad_by_freq
 
-        self.adapter = None
-        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
-        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
-
         if _weight is None:
             self.register_buffer("weight",
                 torch.empty((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
@@ -102,6 +98,10 @@ class FrozenBNBEmbedding(nn.Module):
             assert list(_weight.shape) == [num_embeddings, embedding_dim], \
                 'Shape of weight does not match num_embeddings and embedding_dim'
             self.weight = self.register_buffer("weight", _weight.requires_grad_(False))
+        
+        self.adapter = None
+        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
+        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
 
         self.sparse = sparse
 
