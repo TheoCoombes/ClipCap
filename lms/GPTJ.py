@@ -10,44 +10,110 @@ from typing import Optional, Tuple
 import torch.nn.functional as F
 from torch import nn
 import torch
+import math
 
-class FrozenBNBLinear(nn.Linear):
-    def __init__(self, *args, **kwargs):
-        kwargs["dtype"] = torch.uint8
-        super().__init__(*args, **kwargs)
+class FrozenBNBLinear(nn.Module):
+    __constants__ = ['in_features', 'out_features']
+    in_features: int
+    out_features: int
+    weight: torch.Tensor
 
-        factory_kwargs = {
-            'device': kwargs.get("device", None),
-            'dtype': torch.uint8
-        }
-
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, device=None):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = self.register_buffer("weight", 
+            torch.empty((out_features, in_features), device=device, dtype=torch.uint8, requires_grad=False)
+        )
+        if bias:
+            self.bias = nn.Parameter(torch.empty(out_features, device=device))
+        else:
+            self.register_parameter('bias', None)
+        
         self.adapter = None
-        self.absmax = nn.Parameter(torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs), requires_grad=False)
-        self.code = nn.Parameter(torch.zeros(256, **factory_kwargs), requires_grad=False)
- 
+        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
+        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
+
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
+        # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
+        # https://github.com/pytorch/pytorch/issues/57109
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
+
     def forward(self, input):
         output = DequantizeAndLinear.apply(input, self.weight, self.absmax, self.code, self.bias)
         if self.adapter:
             output += self.adapter(input)
         return output
- 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.in_features}, {self.out_features})"
- 
-class FrozenBNBEmbedding(nn.Embedding):
-    def __init__(self, *args, **kwargs):
-        kwargs["dtype"] = torch.uint8
-        super().__init__(*args, **kwargs)
 
-        factory_kwargs = {
-            'device': kwargs.get("device", None),
-            'dtype': torch.uint8
-        }
+    def extra_repr(self) -> str:
+        return 'in_features={}, out_features={}, bias={}'.format(
+            self.in_features, self.out_features, self.bias is not None
+        )
 
-        self.absmax = nn.Parameter(torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs), requires_grad=False)
-        self.code = nn.Parameter(torch.zeros(256, **factory_kwargs), requires_grad=False)
+
+class Embedding(nn.Module):
+    __constants__ = ['num_embeddings', 'embedding_dim', 'padding_idx', 'max_norm',
+                     'norm_type', 'scale_grad_by_freq', 'sparse']
+
+    num_embeddings: int
+    embedding_dim: int
+    padding_idx: Optional[int]
+    max_norm: Optional[float]
+    norm_type: float
+    scale_grad_by_freq: bool
+    weight: torch.Tensor
+    sparse: bool
+
+    def __init__(self, num_embeddings: int, embedding_dim: int, padding_idx: Optional[int] = None,
+                 max_norm: Optional[float] = None, norm_type: float = 2., scale_grad_by_freq: bool = False,
+                 sparse: bool = False, _weight: Optional[torch.Tensor] = None,
+                 device=None, dtype=None) -> None:
+        super(Embedding, self).__init__()
+        self.num_embeddings = num_embeddings
+        self.embedding_dim = embedding_dim
+        if padding_idx is not None:
+            if padding_idx > 0:
+                assert padding_idx < self.num_embeddings, 'Padding_idx must be within num_embeddings'
+            elif padding_idx < 0:
+                assert padding_idx >= -self.num_embeddings, 'Padding_idx must be within num_embeddings'
+                padding_idx = self.num_embeddings + padding_idx
+        self.padding_idx = padding_idx
+        self.max_norm = max_norm
+        self.norm_type = norm_type
+        self.scale_grad_by_freq = scale_grad_by_freq
+
         self.adapter = None
- 
+        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
+        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
+
+        if _weight is None:
+            self.register_buffer("weight",
+                torch.empty((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
+            )
+            self.reset_parameters()
+        else:
+            assert list(_weight.shape) == [num_embeddings, embedding_dim], \
+                'Shape of weight does not match num_embeddings and embedding_dim'
+            self.weight = self.register_buffer("weight", _weight.requires_grad_(False))
+
+        self.sparse = sparse
+
+    def reset_parameters(self) -> None:
+        nn.init.normal_(self.weight)
+        self._fill_padding_idx_with_zero()
+
+    def _fill_padding_idx_with_zero(self) -> None:
+        if self.padding_idx is not None:
+            with torch.no_grad():
+                self.weight[self.padding_idx].fill_(0)
+
     def forward(self, input, **kwargs):
         with torch.no_grad():
             # note: both quantuized weights and input indices are *not* differentiable
@@ -56,9 +122,20 @@ class FrozenBNBEmbedding(nn.Embedding):
         if self.adapter:
             output += self.adapter(input)
         return output 
- 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.num_embeddings}, {self.embedding_dim})"
+
+    def extra_repr(self) -> str:
+        s = '{num_embeddings}, {embedding_dim}'
+        if self.padding_idx is not None:
+            s += ', padding_idx={padding_idx}'
+        if self.max_norm is not None:
+            s += ', max_norm={max_norm}'
+        if self.norm_type != 2:
+            s += ', norm_type={norm_type}'
+        if self.scale_grad_by_freq is not False:
+            s += ', scale_grad_by_freq={scale_grad_by_freq}'
+        if self.sparse is not False:
+            s += ', sparse=True'
+        return s.format(**self.__dict__)
 
 
 class DequantizeAndLinear(torch.autograd.Function): 
