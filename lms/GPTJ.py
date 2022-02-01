@@ -93,7 +93,7 @@ class FrozenBNBEmbedding(nn.Module):
             self.register_buffer("weight",
                 torch.zeros((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
             )
-            self.reset_parameters()
+            #self.reset_parameters()
         else:
             assert list(_weight.shape) == [num_embeddings, embedding_dim], \
                 'Shape of weight does not match num_embeddings and embedding_dim'
