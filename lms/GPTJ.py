@@ -58,7 +58,7 @@ class FrozenBNBLinear(nn.Module):
         )
 
 
-class Embedding(nn.Module):
+class FrozenBNBEmbedding(nn.Module):
     __constants__ = ['num_embeddings', 'embedding_dim', 'padding_idx', 'max_norm',
                      'norm_type', 'scale_grad_by_freq', 'sparse']
 
