@@ -34,8 +34,6 @@ class FrozenBNBLinear(nn.Module):
         self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
         self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
 
-        #self.reset_parameters()
-
     def reset_parameters(self) -> None:
         # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
         # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
@@ -93,11 +91,10 @@ class FrozenBNBEmbedding(nn.Module):
             self.register_buffer("weight",
                 torch.zeros((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
             )
-            #self.reset_parameters()
         else:
             assert list(_weight.shape) == [num_embeddings, embedding_dim], \
                 'Shape of weight does not match num_embeddings and embedding_dim'
-            self.weight = self.register_buffer("weight", _weight.requires_grad_(False))
+            self.register_buffer("weight", _weight.requires_grad_(False))
         
         self.adapter = None
         self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
