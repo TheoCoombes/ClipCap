@@ -75,7 +75,7 @@ class FrozenBNBEmbedding(nn.Module):
                  max_norm: Optional[float] = None, norm_type: float = 2., scale_grad_by_freq: bool = False,
                  sparse: bool = False, _weight: Optional[torch.Tensor] = None,
                  device=None, dtype=None) -> None:
-        super(Embedding, self).__init__()
+        super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
         if padding_idx is not None:
