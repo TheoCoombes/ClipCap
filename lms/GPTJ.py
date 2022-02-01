@@ -13,10 +13,12 @@ import torch
 
 class FrozenBNBLinear(nn.Linear):
     def __init__(self, *args, **kwargs):
+        kwargs["dtype"] = torch.uint8
         super().__init__(*args, **kwargs)
+
         factory_kwargs = {
             'device': kwargs.get("device", None),
-            'dtype': kwargs.get("dtype", None)
+            'dtype': torch.uint8
         }
 
         self.adapter = None
@@ -32,6 +34,33 @@ class FrozenBNBLinear(nn.Linear):
     def __repr__(self):
         return f"{self.__class__.__name__}({self.in_features}, {self.out_features})"
  
+class FrozenBNBEmbedding(nn.Embedding):
+    def __init__(self, *args, **kwargs):
+        kwargs["dtype"] = torch.uint8
+        super().__init__(*args, **kwargs)
+
+        factory_kwargs = {
+            'device': kwargs.get("device", None),
+            'dtype': torch.uint8
+        }
+
+        self.absmax = nn.Parameter(torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs), requires_grad=False)
+        self.code = nn.Parameter(torch.zeros(256, **factory_kwargs), requires_grad=False)
+        self.adapter = None
+ 
+    def forward(self, input, **kwargs):
+        with torch.no_grad():
+            # note: both quantuized weights and input indices are *not* differentiable
+            weight_deq = dequantize_blockwise(self.weight, absmax=self.absmax, code=self.code)
+            output = F.embedding(input, weight_deq, **kwargs)
+        if self.adapter:
+            output += self.adapter(input)
+        return output 
+ 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.num_embeddings}, {self.embedding_dim})"
+
+
 class DequantizeAndLinear(torch.autograd.Function): 
     @staticmethod
     @custom_fwd
@@ -52,31 +81,6 @@ class DequantizeAndLinear(torch.autograd.Function):
         grad_input = grad_output @ weights_deq
         grad_bias = grad_output.flatten(0, -2).sum(dim=0) if ctx._has_bias else None
         return grad_input, None, None, None, grad_bias
- 
- 
-class FrozenBNBEmbedding(nn.Embedding):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        factory_kwargs = {
-            'device': kwargs.get("device", None),
-            'dtype': kwargs.get("dtype", None)
-        }
-
-        self.absmax = nn.Parameter(torch.zeros((self.weight.numel() - 1) // 4096 + 1, **factory_kwargs), requires_grad=False)
-        self.code = nn.Parameter(torch.zeros(256, **factory_kwargs), requires_grad=False)
-        self.adapter = None
- 
-    def forward(self, input, **kwargs):
-        with torch.no_grad():
-            # note: both quantuized weights and input indices are *not* differentiable
-            weight_deq = dequantize_blockwise(self.weight, absmax=self.absmax, code=self.code)
-            output = F.embedding(input, weight_deq, **kwargs)
-        if self.adapter:
-            output += self.adapter(input)
-        return output 
- 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.num_embeddings}, {self.embedding_dim})"
 
 
 # Start HuggingFace GPT-J Code -----
