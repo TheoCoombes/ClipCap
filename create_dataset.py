@@ -1,8 +1,8 @@
 """ A modified version of clip_inference.py from rom1504/clip-retrieval """
 
 from torch.utils.data.dataloader import default_collate
+from torch.utils.data import DataLoader, Dataset
 from PIL import Image, UnidentifiedImageError
-from torch.utils.data import DataLoader
 from typing import Tuple, Optional
 from pathlib import Path
 from io import BytesIO
@@ -17,104 +17,96 @@ import fire
 import io
 
 def preprocess_text_tokens(tokens: torch.Tensor, max_sequence_length: int, prefix_length: int) -> Tuple[torch.Tensor, torch.Tensor]:
-    padding = max_sequence_length - tokens.shape[0]
-    if padding > 0:
-        tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
-    elif padding < 0:
-        tokens = tokens[:max_sequence_length]
+    
     mask = tokens.ge(0)  # mask is zero where we out of sequence
     tokens[~mask] = 0
     mask = mask.float()
     mask = torch.cat((torch.ones(prefix_length), mask), dim=0)  # adding prefix mask
     return tokens, mask
 
+class FileFolderDataset(Dataset):
 
-def get_image_dataset():
-    """retrieve image dataset module without importing torch at the top level"""
+    """ImageDataset is a pytorch Dataset exposing image and text tensors from a folder of image and text"""
 
-    from torch.utils.data import Dataset
+    def __init__(self, preprocess, folder, tokenizer_model_type: str = "gpt2",
+        tokenizer_model_variant: str = "gpt2-xl", max_token_length: int = 128):
+        super().__init__()
 
-    class ImageDataset(Dataset):
-        """ImageDataset is a pytorch Dataset exposing image and text tensors from a folder of image and text"""
+        path = Path(folder)
 
-        def __init__(self, preprocess, folder, tokenizer_model_type: str = "gpt2", tokenizer_model_variant: str = "",
-                     max_token_length: int = 100, prefix_length: int = 10):
-            super().__init__()
+        text_files = [*path.glob("**/*.txt")]
+        text_files = {text_file.stem: text_file for text_file in text_files}
+        
+        image_files = [
+            *path.glob("**/*.png"),
+            *path.glob("**/*.jpg"),
+            *path.glob("**/*.jpeg"),
+            *path.glob("**/*.bmp"),
+        ]
+        image_files = {image_file.stem: image_file for image_file in image_files}
 
-            path = Path(folder)
+        keys = None
+        join = lambda new_set: new_set & keys if keys is not None else new_set
+        
+        keys = join(text_files.keys())
+        keys = join(image_files.keys())
 
-            text_files = [*path.glob("**/*.txt")]
-            text_files = {text_file.stem: text_file for text_file in text_files}
-            
-            image_files = [
-                *path.glob("**/*.png"),
-                *path.glob("**/*.jpg"),
-                *path.glob("**/*.jpeg"),
-                *path.glob("**/*.bmp"),
-            ]
-            image_files = {image_file.stem: image_file for image_file in image_files}
+        self.keys = list(keys)
+        
+        if tokenizer_model_type == "gpt2":
+            from lms import GPT2_Tokenizer
+            tokenizer = GPT2_Tokenizer.create(tokenizer_model_variant)
+        elif tokenizer_model_type in ("gptj", "gpt-j"):
+            from lms import GPTJ_Tokenizer
+            tokenizer = GPTJ_Tokenizer.create(tokenizer_model_variant)
+        elif tokenizer_model_type in ("t5", "t0"):
+            from lms import T0_Tokenizer
+            tokenizer = T0_Tokenizer.create(tokenizer_model_variant)
+        else:
+            raise ValueError(f"invalid tokenizer model type: '{tokenizer_model_type}' (expected gpt2/gpt-j/t0/t5)")
 
-            keys = None
-            join = lambda new_set: new_set & keys if keys is not None else new_set
-            
-            keys = join(text_files.keys())
-            keys = join(image_files.keys())
+        self.tokenizer = tokenizer
+        self.max_token_length = max_token_length
+        
+        self.text_files = {k: v for k, v in text_files.items() if k in keys}
 
-            self.keys = list(keys)
-            
-            if tokenizer_model_type == "gpt2":
-                from lms import GPT2_Tokenizer
-                tokenizer = GPT2_Tokenizer.create(tokenizer_model_variant)
-            elif tokenizer_model_type in ("gptj", "gpt-j"):
-                from lms import GPTJ_Tokenizer
-                tokenizer = GPTJ_Tokenizer.create(tokenizer_model_variant)
-            elif tokenizer_model_type in ("t5", "t0"):
-                from lms import T0_Tokenizer
-                tokenizer = T0_Tokenizer.create(tokenizer_model_variant)
-            else:
-                raise ValueError(f"invalid tokenizer model type: '{tokenizer_model_type}' (expected gpt2/gpt-j/t0/t5)")
+        self.image_files = {k: v for k, v in image_files.items() if k in keys}
+        self.image_transform = preprocess
 
-            self.tokenizer = tokenizer
-            self.max_token_length = max_token_length
-            self.prefix_length = prefix_length
-            
-            self.text_files = {k: v for k, v in text_files.items() if k in keys}
+    def __len__(self):
+        return len(self.keys)
 
-            self.image_files = {k: v for k, v in image_files.items() if k in keys}
-            self.image_transform = preprocess
+    def __getitem__(self, ind):
+        key = self.keys[ind]
+        output = {}
 
-        def __len__(self):
-            return len(self.keys)
+        try:
+            image_file = self.image_files[key]
+            image_tensor = self.image_transform(Image.open(image_file))
+        except (UnidentifiedImageError, OSError):
+            print(f"Failed to load image {image_file}. Skipping.")
+            return None  # return None to be filtered in the batch collate_fn
 
-        def __getitem__(self, ind):
-            key = self.keys[ind]
-            output = {}
+        output["image_filename"] = str(image_file)
+        output["image_tensor"] = image_tensor
 
-            try:
-                image_file = self.image_files[key]
-                image_tensor = self.image_transform(Image.open(image_file))
-            except (UnidentifiedImageError, OSError):
-                print(f"Failed to load image {image_file}. Skipping.")
-                return None  # return None to be filtered in the batch collate_fn
+        text_file = self.text_files[key]
+        caption = text_file.read_text()
+        
+        tokens = torch.tensor(self.tokenizer.encode_text(caption), dtype=torch.int64)
 
-            output["image_filename"] = str(image_file)
-            output["image_tensor"] = image_tensor
+        padding = self.max_token_length - tokens.shape[0]
+        if padding > 0:
+            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
+        elif padding < 0:
+            tokens = tokens[:self.max_token_length]
+        
+        text_tokens = tokens.numpy()
+        
+        output["text_tokens"] = text_tokens
+        output["text"] = caption
 
-            text_file = self.text_files[key]
-            caption = text_file.read_text()
-            
-            text_tokens = torch.tensor(self.tokenizer.encode_text(caption), dtype=torch.int64)
-            text_tokens, mask = preprocess_text_tokens(text_tokens, self.max_token_length, self.prefix_length)
-            
-            text_tokens, mask = text_tokens.numpy(), mask.numpy()
-            
-            output["text_tokens"] = text_tokens
-            output["text_mask"] = mask
-            output["text"] = caption
-
-            return output
-
-    return ImageDataset
+        return output
 
 
 def create_webdataset(
@@ -314,7 +306,7 @@ class OutputSink:
         self.__init_batch()
 
 
-def clip_inference(
+def preprocess_dataset(
     input_dataset: str,
     output_folder: str,
     input_format: str = "files",
@@ -325,26 +317,24 @@ def clip_inference(
     subset_size: Optional[int] = None,
     wds_image_key: str = "jpg",
     wds_caption_key: str = "txt",
-    wds_caption_in_metadata=False,
+    wds_caption_in_metadata: bool = False,
+    enable_vqa: bool = False,
     clip_model: str = "ViT-B/32",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
-    max_token_length=100,
-    prefix_length=10,
-    device="cuda:0"
+    max_token_length: int = 128,
+    device: str = "cuda:0"
 ):
-    """preprocesses the input dataset and stores the output"""
 
     model, preprocess = clip.load(clip_model, device=device, jit=False)
 
     if input_format == "files":
-        dataset = get_image_dataset()(
+        dataset = FileFolderDataset(
             preprocess,
             input_dataset,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
-            max_token_length=max_token_length,
-            prefix_length=prefix_length
+            max_token_length=max_token_length
         )
     elif input_format == "webdataset":
         dataset = create_webdataset(
@@ -356,8 +346,7 @@ def clip_inference(
             cache_path=cache_path,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
-            max_token_length=max_token_length,
-            prefix_length=prefix_length
+            max_token_length=max_token_length
         )
     else:
         raise Exception(f"No such input format {input_format}")
@@ -401,4 +390,4 @@ def clip_inference(
 
 
 if __name__ == "__main__":
-    fire.Fire(clip_inference)
+    fire.Fire(preprocess_dataset)
