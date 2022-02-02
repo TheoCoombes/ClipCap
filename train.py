@@ -65,7 +65,7 @@ def train(
     elif language_model_type in ("t0", "T5"):
         language_model = T0.create(language_model_variant, **huggingface_kwargs)
     else:
-        raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' or 'gpt2')")
+        raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
 
     if mapping_type not in ("mlp", "transformer"):
         raise ValueError(f"invalid mapping type '{mapping_type}' (expected 'mlp' or 'transformer')")

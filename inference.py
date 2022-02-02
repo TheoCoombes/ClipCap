@@ -11,7 +11,11 @@ import clip
 import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
-from lms import GPT2, GPT2_Tokenizer
+from lms import (
+    GPT2, GPT2_Tokenizer,
+    GPTJ, GPTJ_Tokenizer,
+    T0, T0_Tokenizer
+)
 
 
 def generate_beam(
@@ -273,17 +277,30 @@ def _shutterstock_demo(
     use_beam_search: bool = True,
     prefix_only: bool = False,
     out_filename_prefix: str = "demo_inference",
+    clip_model: str = "ViT-B/32",
+    language_model_type: str = "gpt2",
+    language_model_variant: str = "gpt2-xl",
     total_samples: int = 100,
     **kwargs
 ):
-    clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
-    lm = GPT2.create("gpt2-xl")
-    tokenizer = GPT2_Tokenizer.create("gpt2-xl")
+    clip_model, preprocess = clip.load(clip_model, device=device, jit=False)
+
+    if language_model_type == "gpt2":
+        language_model = GPT2.create(language_model_variant)
+        tokenizer = GPT2_Tokenizer.create(language_model_variant)
+    elif language_model_type in ("gptj", "gpt-j"):
+        language_model = GPTJ.create(language_model_variant)
+        tokenizer = GPTJ_Tokenizer.create(language_model_variant)
+    elif language_model_type in ("t0", "T5"):
+        language_model = T0.create(language_model_variant)
+        tokenizer = T0_Tokenizer.create(language_model_variant)
+    else:
+        raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
 
     if prefix_only:
-        model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm)
+        model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
     else:
-        model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=lm)
+        model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
     
     model = model.to(device)
     model = model.eval()
