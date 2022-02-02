@@ -104,5 +104,4 @@ class CLIPCaptionPrefixOnly(CLIPCaptionModel):
     def train(self, mode: bool = True):
         super().train(mode)
         self.language_model.eval()
-        self.language_model.set_grad_enabled(False)
         return self

@@ -62,7 +62,7 @@ def train(
         language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
     elif language_model_type in ("gptj", "gpt-j"):
         language_model = GPTJ.create(language_model_variant, **huggingface_kwargs)
-    elif language_model_type in ("t0", "T5"):
+    elif language_model_type in ("t0", "t5"):
         language_model = T0.create(language_model_variant, **huggingface_kwargs)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
