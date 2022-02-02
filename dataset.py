@@ -120,23 +120,26 @@ class TokenPrefixDataset(IterableDataset):
             while True:
                 # Sample iteration inside .npy files.
 
+                if sample_index >= max_sample_index:
+                    break
+
                 if overflow_batch is None:
-                    remaining_to_add = self.batch_size
+                    remaining_to_add_from_overflow = self.batch_size
                 else:
-                    remaining_to_add = self.batch_size - overflow_batch[0].shape[0]
+                    remaining_to_add_from_overflow = self.batch_size - overflow_batch[0].shape[0]
                 
-                add_from_reader = min(remaining_to_add, max_sample_index - sample_index)
+                add_from_reader = min(remaining_to_add_from_overflow, max_sample_index - sample_index)
 
                 prefix_np = prefix_array.get_rows(sample_index, sample_index + add_from_reader)
                 tokens_np = token_array.get_rows(sample_index, sample_index + add_from_reader)
                 mask_np = mask_array.get_rows(sample_index, sample_index + add_from_reader)
 
-                if (add_from_reader < self.batch_size) and (remaining_to_add == self.batch_size):
+                if (add_from_reader < self.batch_size) and (remaining_to_add_from_overflow == self.batch_size):
                     # File does not contain `batch_size` samples remaining, load next file...
                     overflow_batch = (prefix_np, tokens_np, mask_np)
                     break
 
-                elif (remaining_to_add < self.batch_size) and (overflow_batch is not None):
+                elif (remaining_to_add_from_overflow < self.batch_size) and (overflow_batch is not None):
                     # Samples exist from previous file, concat them...
                     previous_prefix_np, previous_tokens_np, previous_mask_np = overflow_batch
 
@@ -163,6 +166,8 @@ class TokenPrefixDataset(IterableDataset):
                     prefixes = prefixes / prefixes.norm(2, -1)
 
                 yield (tokens, masks, prefixes)
+
+                sample_index += add_from_reader
             
             # Close file IOs to prepare next .npy files.
             prefix_reader.close()
