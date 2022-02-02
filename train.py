@@ -99,7 +99,7 @@ def train(
     if "," in str(gpu_devices) or str(gpu_devices) == "-1":
         from pytorch_lightning.plugins import DeepSpeedPlugin
         kwargs = {
-            "strategy": DeepSpeedPlugin(stage=3, partition_activations=True)
+            "strategy": DeepSpeedPlugin(stage=3, cpu_offload=True, partition_activations=True)
         }
     else:
         kwargs = {}
