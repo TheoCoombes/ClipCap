@@ -287,13 +287,13 @@ def _shutterstock_demo(
     clip_model, preprocess = clip.load(clip_model, device=device, jit=False)
 
     if language_model_type == "gpt2":
-        language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)
+        language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir).to(device)
         tokenizer = GPT2_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     elif language_model_type in ("gptj", "gpt-j"):
-        language_model = GPTJ.create(language_model_variant, cache_dir=hf_cache_dir)
+        language_model = GPTJ.create(language_model_variant, cache_dir=hf_cache_dir).to(device)
         tokenizer = GPTJ_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     elif language_model_type in ("t0", "T5"):
-        language_model = T0.create(language_model_variant, cache_dir=hf_cache_dir)
+        language_model = T0.create(language_model_variant, cache_dir=hf_cache_dir).to(device)
         tokenizer = T0_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
