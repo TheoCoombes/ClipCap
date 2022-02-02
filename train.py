@@ -97,9 +97,9 @@ def train(
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False) # batch_size=1 as the dataset implements batching.
 
     if "," in str(gpu_devices) or str(gpu_devices) == "-1":
-        from pytorch_lightning.plugins import DDPPlugin
+        from pytorch_lightning.plugins import DeepSpeedPlugin
         kwargs = {
-            "strategy": DDPPlugin(find_unused_parameters=False)
+            "strategy": DeepSpeedPlugin(stage=3, partition_activations=True)
         }
     else:
         kwargs = {}
