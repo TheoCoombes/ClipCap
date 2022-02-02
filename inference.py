@@ -44,7 +44,7 @@ def generate_beam(
             text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
-        for temperature in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+        for i in range(number_to_generate):
             for _ in range(entry_length):
                 outputs = model.language_model.call(inputs_embeds=embeds)
                 logits = outputs.logits
@@ -287,13 +287,13 @@ def _shutterstock_demo(
     clip_model, preprocess = clip.load(clip_model, device=device, jit=False)
 
     if language_model_type == "gpt2":
-        language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir).to(device)
+        language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)
         tokenizer = GPT2_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     elif language_model_type in ("gptj", "gpt-j"):
-        language_model = GPTJ.create(language_model_variant, cache_dir=hf_cache_dir).to(device)
+        language_model = GPTJ.create(language_model_variant, cache_dir=hf_cache_dir)
         tokenizer = GPTJ_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     elif language_model_type in ("t0", "T5"):
-        language_model = T0.create(language_model_variant, cache_dir=hf_cache_dir).to(device)
+        language_model = T0.create(language_model_variant, cache_dir=hf_cache_dir)
         tokenizer = T0_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
