@@ -840,13 +840,13 @@ class GPTJ(GPTJForCausalLM):
         return self.transformer.wte.weight.shape[1]
     
     def get_embedding_text(self, tokens: torch.Tensor) -> torch.Tensor:
-        return self.transformer.wte(tokens.half())
+        return self.transformer.wte(tokens)
     
     def call(self, inputs_embeds: Optional[torch.Tensor] = None, labels: Optional[torch.Tensor] = None,
             attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         return self(
             inputs_embeds=inputs_embeds.half(),
-            labels=labels.half(),
+            labels=labels,
             attention_mask=attention_mask.half()
         )
 
