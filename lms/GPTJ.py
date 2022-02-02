@@ -12,6 +12,13 @@ from torch import nn
 import torch
 import math
 
+def dequantize_blockwise_torch(quantized, absmax, code, block=4096):
+    """Use this function instead of bitsandbytes.functional.dequantize_blockwise if that is not available"""
+    quantized_padded = torch.cat([quantized.view(-1), torch.zeros((block - quantized.numel() % block), dtype=quantized.dtype, device=quantized.device)])
+    dequantized_raw_padded = code.index_select(0, quantized_padded.int())
+    dequantized_padded = (dequantized_raw_padded.view(-1, block) * absmax[:, None])
+    return dequantized_padded.view(-1)[:quantized.numel()].view(*quantized.shape)
+
 class FrozenBNBLinear(nn.Module):
     __constants__ = ['in_features', 'out_features']
     in_features: int
@@ -31,8 +38,8 @@ class FrozenBNBLinear(nn.Module):
             self.register_parameter('bias', None)
         
         self.adapter = None
-        self.register_parameter("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
-        self.register_parameter("code", torch.zeros(256, device=device, requires_grad=False))
+        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
+        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
 
     def reset_parameters(self) -> None:
         # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
@@ -88,7 +95,7 @@ class FrozenBNBEmbedding(nn.Module):
         self.scale_grad_by_freq = scale_grad_by_freq
 
         if _weight is None:
-            self.register_parameter("weight",
+            self.register_buffer("weight",
                 torch.zeros((num_embeddings, embedding_dim), dtype=torch.uint8, device=device, requires_grad=False)
             )
         else:
@@ -97,8 +104,8 @@ class FrozenBNBEmbedding(nn.Module):
             self.register_buffer("weight", _weight.requires_grad_(False))
         
         self.adapter = None
-        self.register_parameter("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
-        self.register_parameter("code", torch.zeros(256, device=device, requires_grad=False))
+        self.register_buffer("absmax", torch.zeros((self.weight.numel() - 1) // 4096 + 1, device=device, requires_grad=False))
+        self.register_buffer("code", torch.zeros(256, device=device, requires_grad=False))
 
         self.sparse = sparse
 
@@ -114,7 +121,7 @@ class FrozenBNBEmbedding(nn.Module):
     def forward(self, input, **kwargs):
         with torch.no_grad():
             # note: both quantuized weights and input indices are *not* differentiable
-            weight_deq = dequantize_blockwise(self.weight, absmax=self.absmax, code=self.code)
+            weight_deq = dequantize_blockwise_torch(self.weight, absmax=self.absmax, code=self.code)
             output = F.embedding(input, weight_deq, **kwargs)
         if self.adapter:
             output += self.adapter(input)
@@ -140,7 +147,7 @@ class DequantizeAndLinear(torch.autograd.Function):
     @custom_fwd
     def forward(ctx, input: torch.Tensor, weights_quantized: torch.ByteTensor,
                 absmax: torch.FloatTensor, code: torch.FloatTensor, bias: torch.FloatTensor):
-        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
+        weights_deq = dequantize_blockwise_torch(weights_quantized, absmax=absmax, code=code)
         ctx.save_for_backward(input, weights_quantized, absmax, code)
         ctx._has_bias = bias is not None
         return F.linear(input, weights_deq, bias)
@@ -151,7 +158,7 @@ class DequantizeAndLinear(torch.autograd.Function):
         assert not ctx.needs_input_grad[1] and not ctx.needs_input_grad[2] and not ctx.needs_input_grad[3]
         input, weights_quantized, absmax, code = ctx.saved_tensors
         # grad_output: [*batch, out_features]
-        weights_deq = dequantize_blockwise(weights_quantized, absmax=absmax, code=code)
+        weights_deq = dequantize_blockwise_torch(weights_quantized, absmax=absmax, code=code)
         grad_input = grad_output @ weights_deq
         grad_bias = grad_output.flatten(0, -2).sum(dim=0) if ctx._has_bias else None
         return grad_input, None, None, None, grad_bias
