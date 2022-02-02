@@ -96,15 +96,7 @@ def train(
     
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False) # batch_size=1 as the dataset implements batching.
 
-    if "," in str(gpu_devices) or str(gpu_devices) == "-1":
-        from pytorch_lightning.plugins import DeepSpeedPlugin
-        kwargs = {
-            "strategy": DeepSpeedPlugin(stage=3, cpu_offload=True, partition_activations=True)
-        }
-    else:
-        kwargs = {}
-
-    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], **kwargs)
+    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], strategy="deepspeed_stage_2", precision=16)
     trainer.fit(model, dataloader)
 
     trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")
