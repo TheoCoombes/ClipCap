@@ -175,3 +175,4 @@ class TokenPrefixDataset(IterableDataset):
             mask_reader.close()
 
             file_index += 1
+            sample_index = 0
