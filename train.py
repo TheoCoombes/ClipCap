@@ -96,7 +96,7 @@ def train(
     
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False) # batch_size=1 as the dataset implements batching.
 
-    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], strategy="deepspeed_stage_2", precision=16)
+    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], strategy="deepspeed_stage_3", precision=16)
     trainer.fit(model, dataloader)
 
     trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")

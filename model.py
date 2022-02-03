@@ -12,7 +12,7 @@ from lms import GPT2, GPTJ, T0
 class CLIPCaptionModel(pl.LightningModule):
     def __init__(self, language_model: Union[GPT2, GPTJ, T0], prefix_length: int = 40, clip_prefix_length: int = 40,
                  prefix_size: int = 512, num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5,
-                 num_warmup_steps: int = 5000, total_steps=None, use_8_bit_optimizers: bool = False):
+                 num_warmup_steps: int = 5000, total_steps=None, use_deepspeed: bool = False):
         
         super().__init__()
 
@@ -29,7 +29,7 @@ class CLIPCaptionModel(pl.LightningModule):
         self.optimizer_lr = optimizer_lr
         self.num_warmup_steps = num_warmup_steps
         self.total_steps = total_steps # TODO - find a better workaround finding the total step amount (for `get_linear_schedule_with_warmup`)
-        self.use_8_bit_optimizers = use_8_bit_optimizers
+        self.use_deepspeed = use_deepspeed
         
         self.lm_embedding_size = self.language_model.get_embedding_size()
 
@@ -58,14 +58,14 @@ class CLIPCaptionModel(pl.LightningModule):
             dummy_token = self.get_dummy_token(tokens.shape[0])
             labels = torch.cat((dummy_token, tokens), dim=1)
         
-        out = self.language_model.call(embedding_cat, labels, mask)
+        out = self.language_model.call(input_embeds=embedding_cat, labels=labels, attention_mask=mask)
 
         return out
     
     def configure_optimizers(self):
-        if self.use_8_bit_optimizers:
-            from bitsandbytes.optim import AdamW8bit
-            optimizer = AdamW8bit(self.parameters(), lr=self.optimizer_lr)
+        if self.use_deepspeed:
+            from deepspeed.ops.adam import FusedAdam
+            optimizer = FusedAdam(self.parameters(), lr=self.optimizer_lr, adam_w_mode=True)
         else:  
             optimizer = AdamW(self.parameters(), lr=self.optimizer_lr)
 
@@ -81,7 +81,7 @@ class CLIPCaptionModel(pl.LightningModule):
         
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
-    def training_step(self, batch: Tuple[torch.Tensor, ...], batch_idx: int):
+    def training_step(self, batch: Tuple[torch.Tensor, ...], _):
         tokens, mask, prefix = batch
 
         # Fix for custom dataloader.
