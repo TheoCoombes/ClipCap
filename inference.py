@@ -282,7 +282,8 @@ def _shutterstock_demo(
     language_model_variant: str = "gpt2-xl",
     hf_cache_dir: Optional[str] = None,
     total_samples: int = 100,
-    **kwargs
+    load_pl_checkpoint: bool = True,
+    **model_kwargs
 ):
     clip_model, preprocess = clip.load(clip_model, device=device, jit=False)
 
@@ -298,10 +299,18 @@ def _shutterstock_demo(
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
 
-    if prefix_only:
-        model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
+    if load_pl_checkpoint:
+        if prefix_only:
+            model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
+        else:
+            model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
     else:
-        model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
+        if prefix_only:
+            model = CLIPCaptionPrefixOnly(language_model, **model_kwargs)
+        else:
+            model = CLIPCaptionModel(language_model, **model_kwargs)
+        
+        model.load_state_dict(torch.load(checkpoint_path))
     
     model = model.to(device)
     model = model.eval()
@@ -324,7 +333,7 @@ def _shutterstock_demo(
         captions, image_features = demo_generate_captions(
             model, tokenizer, clip_model, preprocess, pil_image,
             use_beam_search=use_beam_search, device=device,
-            number_to_generate=number_to_generate, text_prefix=text_prefix, **kwargs
+            number_to_generate=number_to_generate, text_prefix=text_prefix
         )
 
         url = metadata["src"]
