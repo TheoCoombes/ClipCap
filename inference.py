@@ -298,6 +298,9 @@ def _shutterstock_demo(
         tokenizer = T0_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
+    
+    if prefix_only:
+        language_model = language_model.eval()
 
     if load_pl_checkpoint:
         if prefix_only:
