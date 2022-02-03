@@ -50,7 +50,7 @@ def train(
     mapping_type: str = "mlp",
     num_layers: int = 8,
     normalize_prefix: bool = False,
-    use_8_bit_optimizers: bool = False,
+    use_deepspeed: bool = False,
     gpu_devices: str = "0",
     **huggingface_kwargs
 ):
@@ -74,14 +74,14 @@ def train(
         model = CLIPCaptionPrefixOnly(
             language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length,
             prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
-            total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
+            total_steps=total_steps, use_deepspeed=use_deepspeed
         )
         print("Train only Prefix")
     else:
         model = CLIPCaptionModel(
             language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length, 
             prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
-            total_steps=total_steps, use_8_bit_optimizers=use_8_bit_optimizers
+            total_steps=total_steps, use_deepspeed=use_deepspeed
         )
         print("Train both prefix and language model")
 
