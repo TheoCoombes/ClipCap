@@ -310,8 +310,8 @@ def _shutterstock_demo(
         else:
             model = CLIPCaptionModel(language_model, **model_kwargs)
         
-        from deepspeed.utils.zero_to_fp32 import get_fp32_state_dict_from_zero_checkpoint
-        model.load_state_dict(get_fp32_state_dict_from_zero_checkpoint(checkpoint_path))
+        #from deepspeed.utils.zero_to_fp32 import get_fp32_state_dict_from_zero_checkpoint
+        model.load_state_dict(torch.load(checkpoint_path))
     
     model = model.to(device)
     model = model.eval()
