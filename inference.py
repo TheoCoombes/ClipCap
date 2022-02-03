@@ -301,9 +301,9 @@ def _shutterstock_demo(
 
     if load_pl_checkpoint:
         if prefix_only:
-            model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
+            model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model, strict=False)
         else:
-            model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model)
+            model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path, language_model=language_model, strict=False)
     else:
         if prefix_only:
             model = CLIPCaptionPrefixOnly(language_model, **model_kwargs)
