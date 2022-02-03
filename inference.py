@@ -298,9 +298,6 @@ def _shutterstock_demo(
         tokenizer = T0_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
-    
-    if prefix_only:
-        language_model = language_model.eval()
 
     if load_pl_checkpoint:
         if prefix_only:
@@ -313,7 +310,6 @@ def _shutterstock_demo(
         else:
             model = CLIPCaptionModel(language_model, **model_kwargs)
         
-        #from deepspeed.utils.zero_to_fp32 import get_fp32_state_dict_from_zero_checkpoint
         model.load_state_dict(torch.load(checkpoint_path))
     
     model = model.to(device)
