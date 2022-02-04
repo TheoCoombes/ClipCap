@@ -826,15 +826,7 @@ import torch
 class GPTJ(GPTJForCausalLM):
     @classmethod
     def create(cls, model_variant: str = "EleutherAI/gpt-j-6B", **huggingface_kwargs):
-        model = cls.from_pretrained(
-            model_variant,
-            revision='float16',
-            low_cpu_mem_usage=True,
-            **huggingface_kwargs
-        )
-        model.gradient_checkpointing_enable()
-        model.eval()
-        return model
+        return cls.from_pretrained(model_variant, **huggingface_kwargs)
     
     def get_embedding_size(self) -> int:
         return self.transformer.wte.weight.shape[1]
