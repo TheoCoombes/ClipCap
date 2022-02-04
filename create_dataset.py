@@ -16,6 +16,18 @@ import tqdm
 import fire
 import io
 
+def preprocess_text_tokens(tokens: torch.Tensor, max_sequence_length: int, prefix_length: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    padding = max_sequence_length - tokens.shape[0]
+    if padding > 0:
+        tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
+    elif padding < 0:
+        tokens = tokens[:max_sequence_length]
+    mask = tokens.ge(0)  # mask is zero where we out of sequence
+    tokens[~mask] = 0
+    mask = mask.float()
+    mask = torch.cat((torch.ones(prefix_length), mask), dim=0)  # adding prefix mask
+    return tokens, mask
+
 class FileFolderDataset(Dataset):
 
     """ImageDataset is a pytorch Dataset exposing image and text tensors from a folder of image and text"""
