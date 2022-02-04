@@ -49,6 +49,7 @@ def train(
     only_prefix: bool = False,
     mapping_type: str = "mlp",
     num_layers: int = 8,
+    num_attention_heads: int = 8,
     normalize_prefix: bool = False,
     use_deepspeed: bool = False,
     gpu_devices: str = "0",
@@ -66,22 +67,25 @@ def train(
         language_model = T0.create(language_model_variant, **huggingface_kwargs)
     else:
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
+    
+    if only_prefix:
+        language_model = language_model.eval()
 
-    if mapping_type not in ("mlp", "transformer"):
-        raise ValueError(f"invalid mapping type '{mapping_type}' (expected 'mlp' or 'transformer')")
+        for param in language_model.parameters():
+            param.requires_grad = False
 
     if only_prefix:
         model = CLIPCaptionPrefixOnly(
             language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length,
-            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
-            total_steps=total_steps, use_deepspeed=use_deepspeed
+            prefix_size=prefix_size, num_layers=num_layers, num_attention_heads=num_attention_heads,
+            mapping_type=mapping_type, total_steps=total_steps, use_deepspeed=use_deepspeed
         )
         print("Train only Prefix")
     else:
         model = CLIPCaptionModel(
             language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length, 
-            prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type,
-            total_steps=total_steps, use_deepspeed=use_deepspeed
+            prefix_size=prefix_size, num_layers=num_layers, num_attention_heads=num_attention_heads,
+            mapping_type=mapping_type, total_steps=total_steps, use_deepspeed=use_deepspeed
         )
         print("Train both prefix and language model")
 
@@ -96,7 +100,7 @@ def train(
     
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False) # batch_size=1 as the dataset implements batching.
 
-    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], strategy="deepspeed_stage_3", precision=16)
+    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], strategy="deepspeed_stage_2", precision=16)
     trainer.fit(model, dataloader)
 
     trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")

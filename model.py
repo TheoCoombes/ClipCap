@@ -11,8 +11,8 @@ from lms import GPT2, GPTJ, T0
 
 class CLIPCaptionModel(pl.LightningModule):
     def __init__(self, language_model: Union[GPT2, GPTJ, T0], prefix_length: int = 40, clip_prefix_length: int = 40,
-                 prefix_size: int = 512, num_layers: int = 8, mapping_type: str = 'mlp', optimizer_lr: float = 2e-5,
-                 num_warmup_steps: int = 5000, total_steps=None, use_deepspeed: bool = False):
+                 prefix_size: int = 512, num_layers: int = 8, num_attention_heads: int = 8, mapping_type: str = 'mlp',
+                 optimizer_lr: float = 2e-5, num_warmup_steps: int = 5000, total_steps=None, use_deepspeed: bool = False):
         
         super().__init__()
 
@@ -22,10 +22,6 @@ class CLIPCaptionModel(pl.LightningModule):
         # Save hparams as class attributes for better readability.
         self.language_model = language_model
         self.prefix_length = prefix_length
-        self.clip_prefix_length = clip_prefix_length
-        self.prefix_size = prefix_size
-        self.num_layers = num_layers
-        self.mapping_type = mapping_type
         self.optimizer_lr = optimizer_lr
         self.num_warmup_steps = num_warmup_steps
         self.total_steps = total_steps # TODO - find a better workaround finding the total step amount (for `get_linear_schedule_with_warmup`)
@@ -33,16 +29,16 @@ class CLIPCaptionModel(pl.LightningModule):
         
         self.lm_embedding_size = self.language_model.get_embedding_size()
 
-        if self.mapping_type == 'mlp':
+        if mapping_type == 'mlp':
             self.clip_project = MLP(
-                (self.prefix_size, (self.lm_embedding_size * self.prefix_length) // 2, self.lm_embedding_size * self.prefix_length)
+                (prefix_size, (self.lm_embedding_size * self.prefix_length) // 2, self.lm_embedding_size * self.prefix_length)
             )
-        elif self.mapping_type == 'transformer':
+        elif mapping_type == 'transformer':
             self.clip_project = TransformerMapper(
-                self.prefix_size, self.lm_embedding_size, self.prefix_length, self.clip_prefix_length, self.num_layers
+                prefix_size, self.lm_embedding_size, self.prefix_length, clip_prefix_length, num_attention_heads, num_layers
             )
         else:
-            raise ValueError(f"invalid mapping type: '{self.mapping_type}' (choose from 'mlp'/'transformer')")
+            raise ValueError(f"invalid mapping type: '{mapping_type}' (choose from 'mlp'/'transformer')")
 
     def get_dummy_token(self, batch_size: int) -> torch.Tensor:
         return torch.zeros(batch_size, self.prefix_length, dtype=torch.int64)
@@ -85,9 +81,9 @@ class CLIPCaptionModel(pl.LightningModule):
         tokens, mask, prefix = batch
 
         # Fix for custom dataloader.
-        tokens = tokens.squeeze()
-        mask = mask.squeeze()
-        prefix = prefix.squeeze()
+        tokens = tokens.squeeze(0)
+        mask = mask.squeeze(0)
+        prefix = prefix.squeeze(0)
 
         outputs = self(tokens, prefix, mask)
 
