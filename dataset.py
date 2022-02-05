@@ -1,6 +1,6 @@
 """" dataset.py contains a modified version of the `NumpyMatrixReader` from criteo/autofaiss. """
 
-from torch.utils.data import IterableDataset
+from torch.utils.data import Dataset
 from typing import Tuple, Iterator
 from pathlib import Path
 from abc import ABC
@@ -64,7 +64,7 @@ class NumpyMatrixReader(ABC):
         return NumpyLazyNdArray(self.f)
 
 
-class TokenPrefixDataset(IterableDataset):
+class TokenPrefixDataset(Dataset):
     def __init__(self, data_path: str, batch_size: int = 5, normalize_prefix: bool = False):
         super().__init__()
         
@@ -93,7 +93,7 @@ class TokenPrefixDataset(IterableDataset):
     def __len__(self):
         return self.sample_count
     
-    def __iter__(self) -> Iterator[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    def __getitem__(self) -> Iterator[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         file_index = 0
         max_file_index = len(self.prefix_files)
 
