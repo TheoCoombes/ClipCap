@@ -54,7 +54,7 @@ class CLIPCaptionModel(pl.LightningModule):
             dummy_token = self.get_dummy_token(tokens.shape[0])
             labels = torch.cat((dummy_token, tokens), dim=1)
         
-        out = self.language_model.call(input_embeds=embedding_cat, labels=labels, attention_mask=mask)
+        out = self.language_model.call(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
 
         return out
     
