@@ -81,9 +81,9 @@ class CLIPCaptionModel(pl.LightningModule):
         tokens, mask, prefix = batch
 
         # Fix for custom dataloader.
-        tokens = tokens.squeeze(0)
-        mask = mask.squeeze(0)
-        prefix = prefix.squeeze(0)
+        tokens = tokens.squeeze()
+        mask = mask.squeeze()
+        prefix = prefix.squeeze()
 
         outputs = self(tokens, prefix, mask)
 
