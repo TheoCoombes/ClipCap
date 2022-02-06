@@ -30,14 +30,15 @@ python3 train.py \
     --output_filename_prefix "demo_model" # output for the model files, e.g. 'demo_model_latest.ckpt'
     --epochs 5
     --save_every_epochs 1 # save the model every x epochs, e.g. 'demo_model_0.ckpt'
-    --save_every_steps 10000 # save the 
+    --save_every_steps 10000 # save the model every x steps, updating the existing file 'demo_model_latest.ckpt'
     --prefix_length 40
     --prefix_size 512 # the output shape of the CLIP embeddings
     --mapping_type "transformer" # the projection mapping type, either 'transformer' or 'mlp'
     --only_prefix # trains only the transformer/mlp layer, and does not finetune the language model
     --num_layers 8 # the number of layers for the mapping type
+    --num
     --normalize_prefix # normalizes the clip embeddings for training
-    --use_8_bit_optimizers # [EXPERIMENTAL] sets the AdamW optimzer to be an 8-bit AdamW from the bitsandbytes library.
+    --use_deepspeed # [EXPERIMENTAL] uses deepspeed for training (for more than 1 gpu)
     --gpu_devices "0" # sets the training GPU device(s) to use. "<number>" / "<number>,<number>,..." / "-1" for all
     **huggingface_kwargs # to provide kwargs for huggingface downloads etc.
 ```
