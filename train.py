@@ -59,21 +59,6 @@ def train(
 
     total_steps = (len(dataset) // batch_size) * epochs
 
-    if language_model_type == "gpt2":
-        language_model = GPT2.create(language_model_variant, **huggingface_kwargs)
-    elif language_model_type in ("gptj", "gpt-j"):
-        language_model = GPTJ.create(language_model_variant, **huggingface_kwargs)
-    elif language_model_type in ("t0", "t5"):
-        language_model = T0.create(language_model_variant, **huggingface_kwargs)
-    else:
-        raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
-    
-    if only_prefix:
-        language_model = language_model.eval()
-
-        for param in language_model.parameters():
-            param.requires_grad = False
-
     if only_prefix:
         model = CLIPCaptionPrefixOnly(
             language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length,

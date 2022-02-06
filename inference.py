@@ -69,7 +69,7 @@ def generate_beam(
                     scores_sum_average = scores_sum / seq_lengths[:, None]
                     scores_sum_average, next_tokens = scores_sum_average.view(-1).topk(beam_size, -1)
 
-                    next_tokens_source = next_tokens // scores_sum.shape[1]
+                    next_tokens_source = torch.div(next_tokens, scores_sum.shape[1], rounding_mode='trunc')
                     seq_lengths = seq_lengths[next_tokens_source]
                     next_tokens = next_tokens % scores_sum.shape[1]
                     next_tokens = next_tokens.unsqueeze(1)
@@ -97,6 +97,74 @@ def generate_beam(
             output_texts = [output_texts[i] for i in order][0]
 
             generations.append(output_texts)
+    
+    return generations
+
+
+def generate_nucleus_sampling(
+    model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
+    tokenizer: GPT2_Tokenizer,
+    embeds: torch.Tensor,
+    number_to_generate: int = 1,
+    text_prefix_tokens: Optional[torch.Tensor] = None,
+    entry_length: int = 67,
+    top_p: float = 0.8,
+    temperature: float = 1.0,
+    stop_token: str = '.'
+):
+
+    stop_token = tokenizer.encode_text(stop_token)[0]
+    tokens = None
+
+    filter_value = -float(np.inf)
+    generations = []
+
+    with torch.no_grad():
+        if text_prefix_tokens is not None:
+            text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
+            embeds = torch.cat((embeds, text_prefix_embed), dim=1)
+
+        for i in range(number_to_generate):
+            for _ in range(entry_length):
+                outputs = model.language_model.call(inputs_embeds=embeds)
+                logits = outputs.logits
+                logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
+
+                if top_k is None:
+                    top_k = logits.shape[-1]
+                if top_p is None:
+                    top_p = 1.0
+                    
+                p, largest_p_idx = nnf.softmax(logits, dim=-1).topk(top_k, dim=-1)
+                cumulative_p = p.cumsum(dim=-1)
+                threshold_repeated = top_p + torch.zeros((len(p), 1)).to("cuda:4")
+                idx = torch.searchsorted(cumulative_p, threshold_repeated).clip(max=top_k-1).squeeze()
+                cutoffs = cumulative_p[torch.arange(len(cumulative_p)), idx]
+                censored_p = (cumulative_p <= cutoffs[:, None]) * p
+                renormalized_p = censored_p / censored_p.sum(dim=-1, keepdims=True)
+
+                final_p = torch.zeros_like(logits)
+                row_idx = torch.arange(len(p)).unsqueeze(1).repeat(1,top_k).to("cuda:4")
+                final_p[row_idx, largest_p_idx] = renormalized_p.to(final_p.dtype)
+
+                next_token = torch.multinomial(final_p, num_samples=1)
+                
+                next_token_embed = model.language_model.get_embedding_text(next_token)
+
+                if tokens is None:
+                    tokens = next_token
+                else:
+                    tokens = torch.cat((tokens, next_token), dim=1)
+                
+                embeds = torch.cat((embeds, next_token_embed), dim=1)
+                
+                if stop_token == next_token.item():
+                    break
+
+            output_list = list(tokens.squeeze().cpu().numpy())
+            output_text = tokenizer.decode_tokens(output_list)
+        
+            generations.append(output_text)
     
     return generations
 
@@ -177,12 +245,10 @@ def demo_generate_captions(
 
     with torch.no_grad():
         prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
-        prefix_embed = model.clip_project(prefix).reshape(1, 40, -1)
+        prefix_embed = model.clip_project(prefix).reshape(-1, model.prefix_length, model.lm_embedding_size)
     
     if text_prefix is not None:
-        text_prefix_tokens = torch.tensor(
-            tokenizer.encode_text(text_prefix), device=device
-        ).unsqueeze(0)
+        text_prefix_tokens = torch.tensor(tokenizer.encode_text(text_prefix), device=device).unsqueeze(0)
     else:
         text_prefix_tokens = None
     
@@ -293,7 +359,7 @@ def _shutterstock_demo(
     elif language_model_type in ("gptj", "gpt-j"):
         language_model = GPTJ.create(language_model_variant, cache_dir=hf_cache_dir)
         tokenizer = GPTJ_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
-    elif language_model_type in ("t0", "T5"):
+    elif language_model_type in ("t0", "t5"):
         language_model = T0.create(language_model_variant, cache_dir=hf_cache_dir)
         tokenizer = T0_Tokenizer.create(language_model_variant, cache_dir=hf_cache_dir)
     else:

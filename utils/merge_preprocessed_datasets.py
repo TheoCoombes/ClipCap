@@ -42,10 +42,10 @@ def merge_datasets(
                 f = shutil.copy
             
             f(image_file, out_images / f"{folder.name}-{filename}")
-            f(tokens_file, out_images / f"{folder.name}-{filename}")
-            f(masks_file, out_images / f"{folder.name}-{filename}")
+            f(tokens_file, out_tokens / f"{folder.name}-{filename}")
+            f(masks_file, out_masks / f"{folder.name}-{filename}")
     
-    print("done.")
+    print("Done.")
 
 
 if __name__ == '__main__':

@@ -91,7 +91,7 @@ class TokenPrefixDataset(IterableDataset):
             _reader.close()
     
     def __len__(self):
-        return self.sample_count
+        return self.sample_count // self.batch_size
     
     def __iter__(self) -> Iterator[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         file_index = 0
