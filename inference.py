@@ -17,6 +17,40 @@ from lms import (
     T0, T0_Tokenizer
 )
 
+# From https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
+def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
+    """ Filter a distribution of logits using top-k and/or nucleus (top-p) filtering
+        Args:
+            logits: logits distribution shape (vocabulary size)
+            top_k >0: keep only top k tokens with highest probability (top-k filtering).
+            top_p >0.0: keep the top tokens with cumulative probability >= top_p (nucleus filtering).
+                Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751)
+    """
+    assert logits.dim() == 1  # batch size 1 for now - could be updated for more but the code would be less clear
+    top_k = min(top_k, logits.size(-1))  # Safety check
+    if top_k > 0:
+        # Remove all tokens with a probability less than the last token of the top-k
+        indices_to_remove = logits < torch.topk(logits, top_k)[0][..., -1, None]        logits[indices_to_remove] = filter_value
+
+    if top_p > 0.0:
+        sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+        cumulative_probs = torch.cumsum(nnf.softmax(sorted_logits, dim=-1), dim=-1)
+
+        # Remove tokens with cumulative probability above the threshold
+        sorted_indices_to_remove = cumulative_probs > top_p
+        # Shift the indices to the right to keep also the first token above the threshold
+        sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+        sorted_indices_to_remove[..., 0] = 0
+
+        indices_to_remove = sorted_indices[sorted_indices_to_remove]
+        logits[indices_to_remove] = filter_value
+    return logits
+
+def repetition_penalty_apply(logits, tokens, penalty):
+    tok_logits = torch.gather(logits, -1, tokens)
+    tok_logits = torch.where(tok_logits < 0, tok_logits * penalty, tok_logits / penalty)
+    logits.scatter_(-1, tokens, tok_logits)
+    return logits
 
 def generate_beam(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
@@ -36,7 +70,6 @@ def generate_beam(
 
     seq_lengths = torch.ones(beam_size, device=embeds.device)
     has_stopped = torch.zeros(beam_size, dtype=torch.bool, device=embeds.device)
-
     generations = []
 
     with torch.no_grad():
@@ -85,7 +118,6 @@ def generate_beam(
                 next_token_embed = model.language_model.get_embedding_text(next_tokens.squeeze()).view(embeds.shape[0], 1, -1)
                 embeds = torch.cat((embeds, next_token_embed), dim=1)
                 has_stopped = has_stopped + next_tokens.eq(stop_token).squeeze()
-
                 if has_stopped.all():
                     break
                 
@@ -176,53 +208,60 @@ def generate_no_beam(
     number_to_generate: int = 1,
     text_prefix_tokens: Optional[torch.Tensor] = None,
     entry_length: int = 67,
-    top_p: float = 0.8,
     temperature: float = 1.0,
-    stop_token: str = '.'
+    stop_token: str = '.',
+    repetition_penalty: float = 1.0,
 ):
 
     stop_token = tokenizer.encode_text(stop_token)[0]
-    tokens = None
-
+    print("Generate_no_beam")
     filter_value = -float(np.inf)
     generations = []
+    repetition_penalty = 1.2
 
     with torch.no_grad():
         if text_prefix_tokens is not None:
             text_prefix_embed = model.language_model.get_embedding_text(text_prefix_tokens)
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
-        for i in range(number_to_generate):
+        embeds_init = embeds
+        for top_p in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+            tokens = None
+            embeds = embeds_init
             for _ in range(entry_length):
+                # Get logits from a forward pass
                 outputs = model.language_model.call(inputs_embeds=embeds)
                 logits = outputs.logits
-                logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
 
-                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-                cumulative_probs = torch.cumsum(nnf.softmax(sorted_logits, dim=-1), dim=-1)
+                # Assume batch size of 1
+                assert logits.shape[0] == 1
+                logits = logits[0, -1, :]
 
-                sorted_indices_to_remove = cumulative_probs > top_p
-                sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
-                sorted_indices_to_remove[..., 0] = 0
+                # Apply the repetition penalty
+                if repetition_penalty != 1.0 and tokens is not None:
+                    tokens1 = tokens[0, :] # assuming batch size of 1
+                    logits = repetition_penalty_apply(logits, tokens1, repetition_penalty)
 
-                indices_to_remove = sorted_indices[sorted_indices_to_remove]
-                logits[:, indices_to_remove] = filter_value
+                # Apply temperature and filter
+                logits = logits / (temperature if temperature > 0 else 1.0)
+                logits = top_k_top_p_filtering(logits, top_p=top_p, top_k=0.0)
 
-                next_token = torch.argmax(logits, -1).unsqueeze(0)
+                # Get the next token and its embedding
+                probabilities = nnf.softmax(logits, dim=-1)
+                next_token = torch.multinomial(probabilities, 1).unsqueeze(0)
                 next_token_embed = model.language_model.get_embedding_text(next_token)
 
                 if tokens is None:
                     tokens = next_token
                 else:
                     tokens = torch.cat((tokens, next_token), dim=1)
-                
                 embeds = torch.cat((embeds, next_token_embed), dim=1)
                 
                 if stop_token == next_token.item():
                     break
 
             output_list = list(tokens.squeeze().cpu().numpy())
-            output_text = tokenizer.decode_tokens(output_list)[0]
+            output_text = tokenizer.decode_tokens(output_list)
         
             generations.append(output_text)
     
@@ -257,6 +296,7 @@ def demo_generate_captions(
             number_to_generate=number_to_generate, text_prefix_tokens=text_prefix_tokens,
             **generation_kwargs)
     else:
+
         generated_captions = generate_no_beam(model, tokenizer, prefix_embed,
             number_to_generate=number_to_generate, text_prefix_tokens=text_prefix_tokens,
             **generation_kwargs)
