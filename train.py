@@ -6,7 +6,7 @@ import torch
 import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
-from dataset import TokenPrefixDataset
+from dataset import TokenPrefixDataset, MultiplePrefixDataset
 from lms import GPT2, GPTJ, T0
 
 class CheckpointSaver(pl.Callback):
@@ -31,64 +31,115 @@ class CheckpointSaver(pl.Callback):
             if (current_step % self.save_every_n_steps == 0):
                 output_path = self.output_path / f"{self.filename_prefix}_latest.ckpt"
                 trainer.save_checkpoint(output_path)
+    
+    def save_final_checkpoint(self, trainer: pl.Trainer):
+        output_path = self.output_path / f"{self.filename_prefix}_final.ckpt"
+        trainer.save_checkpoint(output_path)
 
 
 def train(
     data_dir: str = "./train/",
     output_dir: str = "./models/",
-    output_filename_prefix: str = "demo_model",
-    epochs: int = 10,
+    output_name_prefix: str = "demo_model.ckpt",
+    epochs: int = 3,
     save_every_epochs: int = 1,
     save_every_steps: int = 10000,
+    scheduler_warmup_steps: int = 5000,
     prefix_length: int = 10,
-    prefix_size: int = 512,
+    prefix_size: int = 768,
     clip_prefix_length: int = 10,
     language_model_type = "gpt2",
     language_model_variant = "gpt2-xl",
     batch_size: int = 256,
-    only_prefix: bool = False,
-    mapping_type: str = "mlp",
+    prefix_only: bool = False,
+    mapping_type: str = "transformer",
     num_layers: int = 8,
     num_attention_heads: int = 8,
     normalize_prefix: bool = False,
+    merge_datasets: bool = False,
     use_deepspeed: bool = False,
-    gpu_devices: str = "0",
-    **huggingface_kwargs
+    use_16bit_precision: bool = True,
+    gpu_devices: Optional[str] = "0",
+    deepspeed_strategy: Optional[str] = None
 ):
-    dataset = TokenPrefixDataset(data_dir, batch_size=batch_size, normalize_prefix=normalize_prefix)
+    """ Starts the main training process. """ # TODO args.
 
+    # Prepare training datasets.
+    if merge_datasets:
+        data_dirs = data_dir.split(",")
+
+        if len(data_dirs) < 2:
+            raise ValueError((
+                "--merge_datasets was enabled, but less than 2 directories were specified.\n"
+                "You can specify more than one data directory by comma seperating the --data_dir input."
+            ))
+        
+        datasets = []
+        for dir in data_dirs:
+            datasets.append(
+                TokenPrefixDataset(dir, batch_size=batch_size, normalize_prefix=normalize_prefix)
+            )
+        
+        dataset = MultiplePrefixDataset(*datasets)
+    else:
+        dataset = TokenPrefixDataset(data_dir, batch_size=batch_size, normalize_prefix=normalize_prefix)
+
+    # TODO find better solution for using `get_linear_schedule_with_warmup` with PL.
     total_steps = (len(dataset) // batch_size) * epochs
 
-    if only_prefix:
-        model = CLIPCaptionPrefixOnly(
-            language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length,
-            prefix_size=prefix_size, num_layers=num_layers, num_attention_heads=num_attention_heads,
-            mapping_type=mapping_type, total_steps=total_steps, use_deepspeed=use_deepspeed
-        )
-        print("Train only Prefix")
+    model_kwargs = {
+        "language_model_type": language_model_type,
+        "language_model_variant": language_model_variant,
+        "prefix_length": prefix_length,
+        "clip_prefix_length": clip_prefix_length,
+        "prefix_size": prefix_size,
+        "num_layers": num_layers,
+        "num_attention_heads": num_attention_heads,
+        "mapping_type": mapping_type,
+        "scheduler_warmup_steps": scheduler_warmup_steps,
+        "total_steps": total_steps,
+        "use_deepspeed": use_deepspeed,
+        "prefix_only": prefix_only
+    }
+
+    if prefix_only:
+        model = CLIPCaptionPrefixOnly(**model_kwargs)
+        print("Train only Prefix.")
     else:
-        model = CLIPCaptionModel(
-            language_model, prefix_length=prefix_length, clip_prefix_length=clip_prefix_length, 
-            prefix_size=prefix_size, num_layers=num_layers, num_attention_heads=num_attention_heads,
-            mapping_type=mapping_type, total_steps=total_steps, use_deepspeed=use_deepspeed
-        )
-        print("Train both prefix and language model")
+        model = CLIPCaptionModel(**model_kwargs)
+        print("Train both Prefix and Language Model.")
 
     # Easier to use GPU args. `-1` = use all, `0` = use gpu 0, `0,1` = use gpus 1 and 2 etc.
     if isinstance(gpu_devices, int) and gpu_devices != -1:
         gpu_devices = [gpu_devices]
     
-    output_path = Path(output_dir)
-    checkpoint_saver = CheckpointSaver(output_path, output_filename_prefix,
-        save_every_n_epochs=save_every_epochs, save_every_n_steps=save_every_steps
+    # Create `CheckpointSaver` as a trainer callback instance.
+    checkpoint_saver = CheckpointSaver(
+        Path(output_dir),
+        output_name_prefix,
+        save_every_n_epochs=save_every_epochs,
+        save_every_n_steps=save_every_steps
     )
     
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False) # batch_size=1 as the dataset implements batching.
+    # TODO better dataset implementation
+    # - Improve dataloader system (batch_size=1 is a temporary fix)
+    # - Speed up streaming (multiple workers and/or prepare data ahead of retrieval)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-    trainer = pl.Trainer(gpus=gpu_devices, max_epochs=epochs, callbacks=[checkpoint_saver], strategy="deepspeed_stage_2", precision=16)
+    # Create trainer class.
+    trainer = pl.Trainer(
+        gpus=gpu_devices,
+        max_epochs=epochs,
+        callbacks=[checkpoint_saver],
+        strategy=deepspeed_strategy,
+        precision=(16 if use_16bit_precision else 32)
+    )
+
+    # Run training process.
     trainer.fit(model, dataloader)
 
-    trainer.save_checkpoint(output_path / f"{output_filename_prefix}_final.ckpt")
+    # Save final checkpoint.
+    checkpoint_saver.save_final_checkpoint(trainer)
 
 
 if __name__ == '__main__':

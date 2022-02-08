@@ -65,6 +65,8 @@ class NumpyMatrixReader(ABC):
 
 
 class TokenPrefixDataset(IterableDataset):
+    """ IterableDataset that yields preprocessed image prefixes, text tokens and text masks. (see `preprocess_dataset.py`) """
+
     def __init__(self, data_path: str, batch_size: int = 5, normalize_prefix: bool = False):
         super().__init__()
         
@@ -176,3 +178,28 @@ class TokenPrefixDataset(IterableDataset):
 
             file_index += 1
             sample_index = 0
+
+
+class MultiplePrefixDataset(IterableDataset):
+    """ Merges many `TokenPrefixDataset` instances together, alternating each batch. """
+    
+    def __init__(self, *datasets):
+        super().__init__()
+
+        self.total_samples = sum([len(dataset) for dataset in datasets])
+        self.dataset_iters = [iter(dataset) for dataset in datasets]
+
+        self.total_datasets = len(datasets)
+        self.dataset_index = 0
+
+    def __len__(self):
+        return self.total_samples
+
+    def __iter__(self):
+        while True:
+            if self.dataset_index >= self.total_datasets:
+                self.dataset_index = 0
+
+            yield next(self.dataset_iters[self.dataset_index])
+
+            self.dataset_index += 1
