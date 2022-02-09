@@ -74,13 +74,11 @@ class TokenPrefixDataset(IterableDataset):
         self.normalize_prefix = normalize_prefix
         
         path = Path(data_path)
-        images_path = path / "img_embeddings"
-        tokens_path = path / "text_tokens"
-        masks_path = path / "text_masks"
+        prefixes_path = path / "prefixes"
+        tokens_path = path / "tokens"
         
-        self.prefix_files = sorted(list(images_path.glob("*.npy")), key=lambda x: x.name)
-        self.token_files = sorted(list(tokens_path.glob("*.npy")), key=lambda x: x.name)
-        self.mask_files = sorted(list(masks_path.glob("*.npy")), key=lambda x: x.name)
+        self.prefix_files = sorted(list(prefixes_path.glob("*.npy")), key=lambda x: x.name)
+        self.tokens_files = sorted(list(tokens_path.glob("*.npy")), key=lambda x: x.name)
 
         
         self.start_indices = [0] * len(self.prefix_files)
@@ -109,12 +107,10 @@ class TokenPrefixDataset(IterableDataset):
                 file_index = 0
 
             prefix_reader = NumpyMatrixReader(self.prefix_files[file_index])
-            token_reader = NumpyMatrixReader(self.token_files[file_index])
-            mask_reader = NumpyMatrixReader(self.mask_files[file_index])
+            tokens_reader = NumpyMatrixReader(self.tokens_files[file_index])
 
             prefix_array = prefix_reader.get_lazy_array()
-            token_array = token_reader.get_lazy_array()
-            mask_array = mask_reader.get_lazy_array()
+            tokens_array = tokens_reader.get_lazy_array()
 
             sample_index = 0
             max_sample_index = prefix_array.num_rows
@@ -133,21 +129,19 @@ class TokenPrefixDataset(IterableDataset):
                 add_from_reader = min(remaining_to_add_from_overflow, max_sample_index - sample_index)
 
                 prefix_np = prefix_array.get_rows(sample_index, sample_index + add_from_reader)
-                tokens_np = token_array.get_rows(sample_index, sample_index + add_from_reader)
-                mask_np = mask_array.get_rows(sample_index, sample_index + add_from_reader)
+                tokens_np = tokens_array.get_rows(sample_index, sample_index + add_from_reader)
 
                 if (add_from_reader < self.batch_size) and (remaining_to_add_from_overflow == self.batch_size):
                     # File does not contain `batch_size` samples remaining, load next file...
-                    overflow_batch = (prefix_np, tokens_np, mask_np)
+                    overflow_batch = (prefix_np, tokens_np)
                     break
 
                 elif (remaining_to_add_from_overflow < self.batch_size) and (overflow_batch is not None):
                     # Samples exist from previous file, concat them...
-                    previous_prefix_np, previous_tokens_np, previous_mask_np = overflow_batch
+                    previous_prefix_np, previous_tokens_np = overflow_batch
 
                     prefix_np = np.concatenate((prefix_np, previous_prefix_np), axis=0)
                     tokens_np = np.concatenate((tokens_np, previous_tokens_np), axis=0)
-                    mask_np = np.concatenate((mask_np, previous_mask_np), axis=0)
                 
                 elif overflow_batch is not None:
                     # `overflow_batch` no longer needs to be `None`.
@@ -157,9 +151,6 @@ class TokenPrefixDataset(IterableDataset):
                 tokens = torch.from_numpy(
                     np.array(tokens_np, dtype=np.int64)
                 )
-                masks = torch.from_numpy(
-                    np.array(mask_np, dtype=np.float32)
-                )
                 prefixes = torch.from_numpy(
                     np.array(prefix_np, dtype=np.float32)
                 )
@@ -167,14 +158,13 @@ class TokenPrefixDataset(IterableDataset):
                 if self.normalize_prefix:
                     prefixes = prefixes / prefixes.norm(2, -1)
 
-                yield (tokens, masks, prefixes)
+                yield (tokens, prefixes)
 
                 sample_index += add_from_reader
             
             # Close file IOs to prepare next .npy files.
             prefix_reader.close()
-            token_reader.close()
-            mask_reader.close()
+            tokens_reader.close()
 
             file_index += 1
             sample_index = 0

@@ -44,7 +44,7 @@ def train(
     epochs: int = 3,
     save_every_epochs: int = 1,
     save_every_steps: int = 10000,
-    scheduler_warmup_steps: int = 5000,
+    scheduler_warmup_steps: int = 500,
     prefix_length: int = 10,
     prefix_size: int = 768,
     clip_prefix_length: int = 10,
@@ -62,7 +62,7 @@ def train(
     gpu_devices: Optional[str] = "0",
     deepspeed_strategy: Optional[str] = None
 ):
-    """ Starts the main training process. """ # TODO args.
+    """ Starts the main training process. """ # TODO arg docs.
 
     # Prepare training datasets.
     if merge_datasets:
@@ -85,7 +85,7 @@ def train(
         dataset = TokenPrefixDataset(data_dir, batch_size=batch_size, normalize_prefix=normalize_prefix)
 
     # TODO find better solution for using `get_linear_schedule_with_warmup` with PL.
-    total_steps = (len(dataset) // batch_size) * epochs
+    total_steps = len(dataset) * epochs
 
     model_kwargs = {
         "language_model_type": language_model_type,
@@ -98,8 +98,7 @@ def train(
         "mapping_type": mapping_type,
         "scheduler_warmup_steps": scheduler_warmup_steps,
         "total_steps": total_steps,
-        "use_deepspeed": use_deepspeed,
-        "prefix_only": prefix_only
+        "use_deepspeed": use_deepspeed
     }
 
     if prefix_only:

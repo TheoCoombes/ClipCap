@@ -1,9 +1,7 @@
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
 from torch.nn import functional as nnf
 from typing import Optional, Tuple
-from functools import lru_cache
 import pytorch_lightning as pl
-import torch.nn as nn
 import torch
 
 from layers import TransformerMapper, MLP
@@ -17,8 +15,8 @@ class CLIPCaptionModel(pl.LightningModule):
         # Save hparams (see `train.py` for arguments).
         self.save_hyperparameters(kwargs)
         
+        # Deepspeed will load the models using configure_sharded_model().
         if not self.hparams.use_deepspeed:
-            # Deepspeed will load the models using configure_sharded_model.
             self.init_models()
 
     def init_models(self):
@@ -56,11 +54,9 @@ class CLIPCaptionModel(pl.LightningModule):
         else:
             raise ValueError(f"invalid mapping type: '{self.hparams.mapping_type}' (choose from 'mlp'/'transformer')")
 
-
     def configure_sharded_model(self):
         """ [deepspeed] Shards the models on initialization to prevent OOM errors. """
         return self.init_models()
-
 
     def forward(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None,
                 labels: Optional[torch.Tensor] = None):
@@ -70,7 +66,7 @@ class CLIPCaptionModel(pl.LightningModule):
         embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
 
         if labels is not None:
-            dummy_token = torch.zeros(tokens.shape[0], self.prefix_length, dtype=torch.int64)
+            dummy_token = torch.zeros(tokens.shape[0], self.hparams.prefix_length, dtype=torch.int64)
             labels = torch.cat((dummy_token, tokens), dim=1)
         
         out = self.language_model.call(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
@@ -78,10 +74,13 @@ class CLIPCaptionModel(pl.LightningModule):
         return out
     
     def configure_optimizers(self):
+        """ Returns a dict containing the model's optimizer and loss rate scheduler. """
+
         if self.use_deepspeed:
             from deepspeed.ops.adam import FusedAdam
             optimizer = FusedAdam(self.parameters(), lr=self.hparams.optimizer_lr, adam_w_mode=True)
-        else:  
+        else: 
+            from torch.optim import AdamW
             optimizer = AdamW(self.parameters(), lr=self.hparams.optimizer_lr)
 
         scheduler = get_linear_schedule_with_warmup(
@@ -98,17 +97,26 @@ class CLIPCaptionModel(pl.LightningModule):
         
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
-    def training_step(self, batch: Tuple[torch.Tensor, ...], _):
-        tokens, mask, prefix = batch
+    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], _):
+        """
+        The model's main training step.
+        `batch` contains a tuple of the caption's tokens, attention mask and the CLIP embedding (prefix). [see `dataset.py`]
+        """
+
+        tokens, prefix = batch
 
         # Fix for custom dataloader.
-        tokens = tokens[0]
-        mask = mask[0]
-        prefix = prefix[0]
+        tokens = tokens.squeeze()
+        prefix = prefix.squeeze()
+
+        mask = tokens.ge(0)  # mask is zero where we out of sequence
+        tokens[~mask] = 0
+        mask = mask.float()
+        mask = torch.cat((torch.ones(self.hparams.prefix_length), mask), dim=0)  # adding prefix mask
 
         outputs = self(tokens, prefix, mask)
 
-        logits = outputs.logits[:, self.prefix_length - 1: -1]
+        logits = outputs.logits[:, self.hparams.prefix_length - 1: -1]
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
         
         return loss
