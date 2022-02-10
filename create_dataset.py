@@ -27,7 +27,8 @@ class FileFolderDataset(Dataset):
         tokenizer_model_type: str = "gpt2",
         tokenizer_model_variant: str = "gpt2-xl",
         max_token_length: int = 128,
-        drop_tokens_if_exceeded: bool = False # Drop the answer if it exceeds `max_token_length`.
+        drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
+        append_space_to_question: bool = True
     ):
         super().__init__()
 
@@ -44,9 +45,7 @@ class FileFolderDataset(Dataset):
         ]
 
         if enable_vqa:
-            text_files.extend(
-                path.glob("**/*.json")
-            )
+            text_files.extend([*path.glob("**/*.json")])
         
         image_files = {image_file.stem: image_file for image_file in image_files}
 
@@ -74,6 +73,7 @@ class FileFolderDataset(Dataset):
         self.max_token_length = max_token_length
         self.drop_tokens_if_exceeded = drop_tokens_if_exceeded
         self.enable_vqa = enable_vqa
+        self.append_space_to_question = append_space_to_question
         
         self.text_files = {k: v for k, v in text_files.items() if k in keys}
 
@@ -115,8 +115,12 @@ class FileFolderDataset(Dataset):
         # answer = either raw caption or VQA answer.
 
         if question is not None:
+            if self.append_space_to_question:
+                question += " "
+            
             question_tokens = torch.tensor(self.tokenizer.encode_text(question), dtype=torch.int64)
             answer_tokens = torch.tensor(self.tokenizer.encode_text(answer), dtype=torch.int64)
+
             tokens = torch.cat((question_tokens, answer_tokens))
         else:
             tokens = answer_tokens = torch.tensor(self.tokenizer.encode_text(answer), dtype=torch.int64)
@@ -145,6 +149,7 @@ def create_webdataset(
     enable_vqa: bool = False,
     max_token_length: int = 128,
     drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
+    append_space_to_question: bool = True
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
     import webdataset as wds
@@ -208,8 +213,12 @@ def create_webdataset(
         # answer = either raw caption or VQA answer.
 
         if question is not None:
+            if append_space_to_question:
+                question += " "
+            
             question_tokens = torch.tensor(tokenizer.encode_text(question), dtype=torch.int64)
             answer_tokens = torch.tensor(tokenizer.encode_text(answer), dtype=torch.int64)
+
             tokens = torch.cat((question_tokens, answer_tokens))
         else:
             tokens = answer_tokens = torch.tensor(tokenizer.encode_text(answer), dtype=torch.int64)
@@ -251,6 +260,7 @@ class OutputSink:
                 batch_init_num = max(
                     [int(x.split("/")[-1].split(".")[0].split("_")[1]) for x in existing_top_level_files]
                 )
+        
         if not self.fs.exists(self.prefixes_folder):
             self.fs.mkdir(self.prefixes_folder)
 
@@ -317,7 +327,6 @@ def preprocess_dataset(
     subset_size: Optional[int] = None,
     wds_image_key: Optional[str] = None,
     wds_caption_answer_key: Optional[str] = None,
-    wds_caption_in_metadata: bool = False,
     enable_vqa: bool = False,
     wds_vqa_question_key: Optional[str] = None,
     clip_model: str = "ViT-B/32",
@@ -325,6 +334,7 @@ def preprocess_dataset(
     tokenizer_model_variant: str = "gpt2-xl",
     max_token_length: int = 128,
     drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
+    append_space_to_question: bool = True,
     device: str = "cuda:0"
 ):
 
@@ -338,7 +348,8 @@ def preprocess_dataset(
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length,
-            drop_tokens_if_exceeded=drop_tokens_if_exceeded
+            drop_tokens_if_exceeded=drop_tokens_if_exceeded,
+            append_space_to_question=append_space_to_question
         )
     elif input_format == "webdataset":
         dataset = create_webdataset(
@@ -346,13 +357,13 @@ def preprocess_dataset(
             preprocess,
             image_key=wds_image_key,
             caption_key=wds_caption_answer_key,
-            caption_in_metadata=wds_caption_in_metadata,
             enable_vqa=enable_vqa,
             wds_vqa_question_key=wds_vqa_question_key,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length,
-            drop_tokens_if_exceeded=drop_tokens_if_exceeded
+            drop_tokens_if_exceeded=drop_tokens_if_exceeded,
+            append_space_to_question=append_space_to_question,
         )
     else:
         raise Exception(f"No such input format {input_format}")
