@@ -16,6 +16,7 @@ from lms import (
     GPTJ, GPTJ_Tokenizer,
     T0, T0_Tokenizer
 )
+from utils import scoring
 
 # From https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
 def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')):
@@ -429,6 +430,11 @@ def _shutterstock_demo(
     samples_path = Path(shutterstock_path)
     sample_data = {}
 
+    scoring_gts = {}
+    scoring_res = {}
+    image_id = 0
+    image_id_to_url = {}
+
     for image_file in tqdm(sorted(list(samples_path.glob("*.jpg")), key=lambda x: x.name)[:total_samples], desc='inference'):
         image = io.imread(image_file)
         pil_image = Image.fromarray(image)
@@ -471,10 +477,30 @@ def _shutterstock_demo(
             "best_caption": best_caption,
             "best_sim": best_sim
         }
+
+        # Collect the records we'll need for scoring
+        scoring_res[image_id] = [
+            {u'caption': original_caption}
+        ]
+        scoring_gts[image_id] = [
+            {u'caption': caption} for caption in captions
+        ]
+
+        image_id_to_url[image_id] = url
+        image_id += 1
     
+    # Calculate scores
+    scores, img_scores = scoring.generate_scores(scoring_gts, scoring_res)
+    print("Scores")
+    print(scores)
+
+    # Integrate the scores into the results
+    for img_id in img_scores.keys():
+        sample_data[image_id_to_url[img_id]]["scores"] = img_scores[img_id]
+
+    # Save the results
     with open(f"{out_filename_prefix}_shutterstock.json", "w+") as f:
         json.dump(sample_data, f)
-
 
 if __name__ == "__main__":
     fire.Fire(_shutterstock_demo)
