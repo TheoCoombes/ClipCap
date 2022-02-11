@@ -58,18 +58,21 @@ class CLIPCaptionModel(pl.LightningModule):
         """ [deepspeed] Shards the models on initialization to prevent OOM errors. """
         return self.init_models()
 
-    def forward(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None,
-                labels: Optional[torch.Tensor] = None):
-        embedding_text = self.language_model.get_embedding_text(tokens)
-
+    def forward(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None):
         prefix_projections = self.clip_project(prefix).view(-1, self.hparams.prefix_length, self.lm_embedding_size)
-        embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
+        image_atts = torch.ones(prefix_projections.size()[:-1], dtype=torch.long).to(prefix_projections.device)
 
-        if labels is not None:
-            dummy_token = torch.zeros(tokens.shape[0], self.hparams.prefix_length, dtype=torch.int64)
-            labels = torch.cat((dummy_token, tokens), dim=1)
+        decoder_targets = tokens.masked_fill(tokens == self.hparams.tokenizer_pad_id, -100)
+        decoder_targets[:, :(tokens.shape[1] - 1)] = -100
         
-        out = self.language_model.call(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
+        out = self.language_model(
+            tokens,
+            attention_mask=mask,
+            encoder_hidden_states=prefix_projections,
+            encoder_attention_mask=image_atts,
+            labels=decoder_targets,
+            return_dict=True
+        )
 
         return out
     
@@ -97,29 +100,22 @@ class CLIPCaptionModel(pl.LightningModule):
         
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
-    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], _):
+    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor, torch.Tensor], _):
         """
         The model's main training step.
         `batch` contains a tuple of the caption's tokens, attention mask and the CLIP embedding (prefix). [see `dataset.py`]
         """
 
-        tokens, prefix = batch
+        tokens, prefix, masks = batch
 
         # Fix for custom dataloader.
         tokens = tokens.squeeze()
         prefix = prefix.squeeze()
+        masks = masks.squeeze()
 
-        mask = tokens.ge(0)  # mask is zero where we out of sequence
-        tokens[~mask] = 0
-        mask = mask.float()
-        mask = torch.cat((torch.ones(self.hparams.prefix_length), mask), dim=0)  # adding prefix mask
-
-        outputs = self(tokens, prefix, mask)
-
-        logits = outputs.logits[:, self.hparams.prefix_length - 1: -1]
-        loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
+        outputs = self(tokens, prefix, masks)
         
-        return loss
+        return outputs.loss
 
 
 class CLIPCaptionPrefixOnly(CLIPCaptionModel):

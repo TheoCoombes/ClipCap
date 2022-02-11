@@ -76,11 +76,12 @@ class TokenPrefixDataset(IterableDataset):
         path = Path(data_path)
         prefixes_path = path / "prefixes"
         tokens_path = path / "tokens"
+        masks_path = path / "masks"
         
         self.prefix_files = sorted(list(prefixes_path.glob("*.npy")), key=lambda x: x.name)
         self.tokens_files = sorted(list(tokens_path.glob("*.npy")), key=lambda x: x.name)
+        self.masks_files = sorted(list(masks_path.glob("*.npy")), key=lambda x: x.name)
 
-        
         self.start_indices = [0] * len(self.prefix_files)
         self.sample_count = 0
         
@@ -108,9 +109,11 @@ class TokenPrefixDataset(IterableDataset):
 
             prefix_reader = NumpyMatrixReader(self.prefix_files[file_index])
             tokens_reader = NumpyMatrixReader(self.tokens_files[file_index])
+            masks_reader = NumpyMatrixReader(self.masks_files[file_index])
 
             prefix_array = prefix_reader.get_lazy_array()
             tokens_array = tokens_reader.get_lazy_array()
+            masks_array = masks_reader.get_lazy_array()
 
             sample_index = 0
             max_sample_index = prefix_array.num_rows
@@ -130,18 +133,20 @@ class TokenPrefixDataset(IterableDataset):
 
                 prefix_np = prefix_array.get_rows(sample_index, sample_index + add_from_reader)
                 tokens_np = tokens_array.get_rows(sample_index, sample_index + add_from_reader)
+                masks_np = masks_array.get_rows(sample_index, sample_index + add_from_reader)
 
                 if (add_from_reader < self.batch_size) and (remaining_to_add_from_overflow == self.batch_size):
                     # File does not contain `batch_size` samples remaining, load next file...
-                    overflow_batch = (prefix_np, tokens_np)
+                    overflow_batch = (prefix_np, tokens_np, masks_np)
                     break
 
                 elif (remaining_to_add_from_overflow < self.batch_size) and (overflow_batch is not None):
                     # Samples exist from previous file, concat them...
-                    previous_prefix_np, previous_tokens_np = overflow_batch
+                    previous_prefix_np, previous_tokens_np, previous_masks_np = overflow_batch
 
                     prefix_np = np.concatenate((prefix_np, previous_prefix_np), axis=0)
                     tokens_np = np.concatenate((tokens_np, previous_tokens_np), axis=0)
+                    masks_np = np.concatenate((masks_np, previous_masks_np), axis=0)
                 
                 elif overflow_batch is not None:
                     # `overflow_batch` no longer needs to be `None`.
@@ -154,17 +159,21 @@ class TokenPrefixDataset(IterableDataset):
                 prefixes = torch.from_numpy(
                     np.array(prefix_np, dtype=np.float32)
                 )
+                masks = torch.from_numpy(
+                    np.array(masks_np, dtype=np.int64)
+                )
             
                 if self.normalize_prefix:
                     prefixes = prefixes / prefixes.norm(2, -1)
 
-                yield (tokens, prefixes)
+                yield (tokens, prefixes, masks)
 
                 sample_index += add_from_reader
             
             # Close file IOs to prepare next .npy files.
             prefix_reader.close()
             tokens_reader.close()
+            masks_reader.close()
 
             file_index += 1
             sample_index = 0
@@ -176,10 +185,10 @@ class MultiplePrefixDataset(IterableDataset):
     def __init__(self, *datasets):
         super().__init__()
 
-        self.total_samples = sum([len(dataset) for dataset in datasets])
+        self.total_datasets = len(datasets)
+        self.total_samples = max([len(dataset) for dataset in datasets]) * self.total_datasets
         self.dataset_iters = [iter(dataset) for dataset in datasets]
 
-        self.total_datasets = len(datasets)
         self.dataset_index = 0
 
     def __len__(self):

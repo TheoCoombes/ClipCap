@@ -27,7 +27,6 @@ class FileFolderDataset(Dataset):
         tokenizer_model_type: str = "gpt2",
         tokenizer_model_variant: str = "gpt2-xl",
         max_token_length: int = 128,
-        drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
         append_space_to_question: bool = True
     ):
         super().__init__()
@@ -71,7 +70,6 @@ class FileFolderDataset(Dataset):
 
         self.tokenizer = tokenizer
         self.max_token_length = max_token_length
-        self.drop_tokens_if_exceeded = drop_tokens_if_exceeded
         self.enable_vqa = enable_vqa
         self.append_space_to_question = append_space_to_question
         
@@ -118,23 +116,18 @@ class FileFolderDataset(Dataset):
             if self.append_space_to_question:
                 question += " "
             
-            question_tokens = torch.tensor(self.tokenizer.encode_text(question), dtype=torch.int64)
-            answer_tokens = torch.tensor(self.tokenizer.encode_text(answer), dtype=torch.int64)
-
-            tokens = torch.cat((question_tokens, answer_tokens))
+            text = question + answer
         else:
-            tokens = answer_tokens = torch.tensor(self.tokenizer.encode_text(answer), dtype=torch.int64)
+            text = answer
+        
+        raw_tokens = self.tokenizer(text, padding='longest', truncation=True, max_length=self.max_token_length, return_tensors="pt")
+        raw_tokens.input_ids[:,0] = self.tokenizer.bos_token_id
 
-        padding = self.max_token_length - tokens.shape[0]
-        if padding > 0:
-            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
-        elif padding < 0:
-            if self.drop_answer_if_longer:
-                return None  # return None to be filtered in the batch collate_fn
-            else:
-                tokens = tokens[:self.max_token_length]
+        tokens = torch.tensor(raw_tokens.input_ids, dtype=torch.int64)
+        mask = torch.tensor(raw_tokens.attention_mask, dtype=torch.int64)
         
         output["tokens"] = tokens.numpy()
+        output["mask"] = mask.numpy()
 
         return output
 
@@ -148,7 +141,6 @@ def create_webdataset(
     tokenizer_model_variant: str = "gpt2-xl",
     enable_vqa: bool = False,
     max_token_length: int = 128,
-    drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
     append_space_to_question: bool = True
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
@@ -216,23 +208,18 @@ def create_webdataset(
             if append_space_to_question:
                 question += " "
             
-            question_tokens = torch.tensor(tokenizer.encode_text(question), dtype=torch.int64)
-            answer_tokens = torch.tensor(tokenizer.encode_text(answer), dtype=torch.int64)
-
-            tokens = torch.cat((question_tokens, answer_tokens))
+            text = question + answer
         else:
-            tokens = answer_tokens = torch.tensor(tokenizer.encode_text(answer), dtype=torch.int64)
+            text = answer
         
-        padding = max_token_length - tokens.shape[0]
-        if padding > 0:
-            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
-        elif padding < 0:
-            if drop_tokens_if_exceeded:
-                return None  # return None to be filtered in the batch collate_fn
-            else:
-                tokens = tokens[:max_token_length]
+        raw_tokens = tokenizer(text, padding='longest', truncation=True, max_length=max_token_length, return_tensors="pt")
+        raw_tokens.input_ids[:,0] = tokenizer.bos_token_id
+
+        tokens = torch.tensor(raw_tokens.input_ids, dtype=torch.int64)
+        mask = torch.tensor(raw_tokens.attention_mask, dtype=torch.int64)
         
         output["tokens"] = tokens.numpy()
+        output["mask"] = mask.numpy()
         
         return output
 
@@ -248,6 +235,7 @@ class OutputSink:
         self.output_folder = output_folder
         self.prefixes_folder = output_folder + "/prefixes"
         self.tokens_folder = output_folder + "/tokens"
+        self.masks_folder = output_folder + "/masks"
 
         if not self.fs.exists(self.output_folder):
             self.fs.mkdir(self.output_folder)
@@ -266,6 +254,9 @@ class OutputSink:
 
         if not self.fs.exists(self.tokens_folder):
             self.fs.mkdir(self.tokens_folder)
+        
+        if not self.fs.exists(self.masks_folder):
+            self.fs.mkdir(self.masks_folder)
 
         self.write_batch_size = write_batch_size
         self.batch_count = 0
@@ -275,16 +266,18 @@ class OutputSink:
     def __init_batch(self):
         self.prefixes = []
         self.tokens = []
+        self.masks = []
         self.batch_count = 0
         self.batch_num += 1
 
-    def add(self, prefixes, tokens):
+    def add(self, prefixes, tokens, masks):
         """
         add to buffers the image embeddings, text embeddings, and meta
         """
         self.batch_count += prefixes.shape[0]
         self.prefixes.append(prefixes)
         self.tokens.append(tokens)
+        self.masks.append(masks)
 
         if self.batch_count > self.write_batch_size:
             self.flush()
@@ -308,6 +301,14 @@ class OutputSink:
         with self.fs.open(output_path_text + ".npy", "wb") as f:
             npb = BytesIO()
             np.save(npb, tokens_mat)
+            f.write(npb.getbuffer())
+        
+        masks_mat = np.concatenate(self.masks)
+        output_path_text = self.masks_folder + "/masks_" + str(self.batch_num)
+
+        with self.fs.open(output_path_text + ".npy", "wb") as f:
+            npb = BytesIO()
+            np.save(npb, masks_mat)
             f.write(npb.getbuffer())
 
     def flush(self):
@@ -348,7 +349,6 @@ def preprocess_dataset(
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length,
-            drop_tokens_if_exceeded=drop_tokens_if_exceeded,
             append_space_to_question=append_space_to_question
         )
     elif input_format == "webdataset":
@@ -362,7 +362,6 @@ def preprocess_dataset(
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length,
-            drop_tokens_if_exceeded=drop_tokens_if_exceeded,
             append_space_to_question=append_space_to_question,
         )
     else:
@@ -392,8 +391,9 @@ def preprocess_dataset(
             ).cpu().numpy()
 
             tokens = items["tokens"]
+            mask = items["mask"]
 
-            output_sink.add(image_embs, tokens)
+            output_sink.add(image_embs, tokens, mask)
 
         bar.update(batch_size)
         c += batch_size
