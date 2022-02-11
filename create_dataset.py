@@ -358,7 +358,7 @@ def preprocess_dataset(
             image_key=wds_image_key,
             caption_key=wds_caption_answer_key,
             enable_vqa=enable_vqa,
-            wds_vqa_question_key=wds_vqa_question_key,
+            #vqa_question_key=wds_vqa_question_key,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length,
