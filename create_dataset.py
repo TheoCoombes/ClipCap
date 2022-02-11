@@ -120,7 +120,7 @@ class FileFolderDataset(Dataset):
         else:
             text = answer
         
-        raw_tokens = self.tokenizer(text, padding='longest', truncation=True, max_length=self.max_token_length, return_tensors="pt")
+        raw_tokens = self.tokenizer(text, padding='max_length', truncation=True, max_length=self.max_token_length, return_tensors="pt")
         raw_tokens.input_ids[:,0] = self.tokenizer.bos_token_id
 
         tokens = torch.tensor(raw_tokens.input_ids, dtype=torch.int64)
@@ -212,7 +212,7 @@ def create_webdataset(
         else:
             text = answer
         
-        raw_tokens = tokenizer(text, padding='longest', truncation=True, max_length=max_token_length, return_tensors="pt")
+        raw_tokens = tokenizer(text, padding='max_length', truncation=True, max_length=max_token_length, return_tensors="pt")
         raw_tokens.input_ids[:,0] = tokenizer.bos_token_id
         
         output["tokens"] = raw_tokens.input_ids.numpy()
