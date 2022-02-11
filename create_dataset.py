@@ -214,12 +214,9 @@ def create_webdataset(
         
         raw_tokens = tokenizer(text, padding='longest', truncation=True, max_length=max_token_length, return_tensors="pt")
         raw_tokens.input_ids[:,0] = tokenizer.bos_token_id
-
-        tokens = torch.tensor(raw_tokens.input_ids, dtype=torch.int64)
-        mask = torch.tensor(raw_tokens.attention_mask, dtype=torch.int64)
         
-        output["tokens"] = tokens.numpy()
-        output["mask"] = mask.numpy()
+        output["tokens"] = raw_tokens.input_ids.numpy()
+        output["mask"] = raw_tokens.attention_mask.numpy()
         
         return output
 
