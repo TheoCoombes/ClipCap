@@ -2,12 +2,10 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from typing import Optional
 from pathlib import Path
-import torch
 import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
 from dataset import TokenPrefixDataset, MultiplePrefixDataset
-from lms import GPT2, GPTJ, T0
 
 class CheckpointSaver(pl.Callback):
     def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1,

@@ -13,7 +13,7 @@ class CLIPCaptionModel(pl.LightningModule):
         super().__init__()
 
         # Save hparams (see `train.py` for arguments).
-        self.save_hyperparameters(kwargs)
+        self.save_hyperparameters()
         
         # Deepspeed will load the models using configure_sharded_model().
         # if not self.hparams.use_deepspeed: TODO: attempt fix?

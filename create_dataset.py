@@ -22,13 +22,10 @@ class FileFolderDataset(Dataset):
 
     def __init__(self,
         preprocess,
-        folder, 
-        enable_vqa: bool = False,
+        folder,
         tokenizer_model_type: str = "gpt2",
         tokenizer_model_variant: str = "gpt2-xl",
-        max_token_length: int = 128,
-        drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
-        append_space_to_question: bool = True
+        max_token_length: int = 128
     ):
         super().__init__()
 
@@ -43,9 +40,6 @@ class FileFolderDataset(Dataset):
             *path.glob("**/*.jpeg"),
             *path.glob("**/*.bmp"),
         ]
-
-        if enable_vqa:
-            text_files.extend([*path.glob("**/*.json")])
         
         image_files = {image_file.stem: image_file for image_file in image_files}
 
@@ -71,9 +65,6 @@ class FileFolderDataset(Dataset):
 
         self.tokenizer = tokenizer
         self.max_token_length = max_token_length
-        self.drop_tokens_if_exceeded = drop_tokens_if_exceeded
-        self.enable_vqa = enable_vqa
-        self.append_space_to_question = append_space_to_question
         
         self.text_files = {k: v for k, v in text_files.items() if k in keys}
 
@@ -97,42 +88,18 @@ class FileFolderDataset(Dataset):
         output["image_tensor"] = image_tensor
 
         text_file = self.text_files[key]
-        raw_caption = text_file.read_text()
-        
-        if self.enable_vqa:
-            raw_json = json.loads(raw_caption)
-            if raw_json["type"] == "vqa":
-                question = raw_json["question"]
-                answer = raw_json["answer"]
-            else:
-                question = None
-                answer = raw_json["caption"]
-        else:
-            question = None
-            answer = raw_caption
-        
-        # question = either VQA question or None.
-        # answer = either raw caption or VQA answer.
+        caption = text_file.read_text()
 
-        if question is not None:
-            if self.append_space_to_question:
-                question += " "
-            
-            question_tokens = torch.tensor(self.tokenizer.encode_text(question), dtype=torch.int64)
-            answer_tokens = torch.tensor(self.tokenizer.encode_text(answer), dtype=torch.int64)
-
-            tokens = torch.cat((question_tokens, answer_tokens))
-        else:
-            tokens = answer_tokens = torch.tensor(self.tokenizer.encode_text(answer), dtype=torch.int64)
+        tokens = torch.tensor(
+            self.tokenizer.encode_text(caption),
+            dtype=torch.int64
+        )
 
         padding = self.max_token_length - tokens.shape[0]
         if padding > 0:
             tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
         elif padding < 0:
-            if self.drop_answer_if_longer:
-                return None  # return None to be filtered in the batch collate_fn
-            else:
-                tokens = tokens[:self.max_token_length]
+            tokens = tokens[:self.max_token_length]
         
         output["tokens"] = tokens.numpy()
 
@@ -146,10 +113,8 @@ def create_webdataset(
     caption_key: str = "txt",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
-    enable_vqa: bool = False,
-    max_token_length: int = 128,
-    drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
-    append_space_to_question: bool = True
+    caption_in_metadata: bool = False,
+    max_token_length: int = 128
 ):
     """Create a WebDataset reader, it can read a webdataset of image, text and json"""
     import webdataset as wds
@@ -171,11 +136,11 @@ def create_webdataset(
     tokenizer.add_special_tokens({'pad_token': tokenizer.eos_token})
 
     def filter_dataset(item):
-        if caption_key not in item and not enable_vqa:
+        if caption_key not in item and not caption_in_metadata:
             return False
         if image_key not in item:
             return False
-        if enable_vqa and "json" not in item:
+        if caption_in_metadata and "json" not in item:
             return False
         return True
 
@@ -189,48 +154,28 @@ def create_webdataset(
         image_tensor = image_transform(image)
         output["image_tensor"] = image_tensor
 
-        if not enable_vqa:
+        if not caption_in_metadata:
             text = item[caption_key]
             caption = text.decode("utf-8")
-            
-            question = None
-            answer = caption
-         
         else:
             metadata_file = item["json"]
             metadata = metadata_file.decode("utf-8")
-            raw_json = json.loads(metadata)
-
-            if raw_json["type"] == "vqa":
-                question = raw_json["question"]
-                answer = raw_json["answer"]
-            else:
-                question = None
-                answer = raw_json["caption"]
+            caption = json.loads(metadata)[caption_key]
         
 
         # question = either VQA question or None.
         # answer = either raw caption or VQA answer.
 
-        if question is not None:
-            if append_space_to_question:
-                question += " "
-            
-            question_tokens = torch.tensor(tokenizer.encode_text(question), dtype=torch.int64)
-            answer_tokens = torch.tensor(tokenizer.encode_text(answer), dtype=torch.int64)
-
-            tokens = torch.cat((question_tokens, answer_tokens))
-        else:
-            tokens = answer_tokens = torch.tensor(tokenizer.encode_text(answer), dtype=torch.int64)
+        tokens = torch.tensor(
+            tokenizer.encode_text(caption),
+            dtype=torch.int64
+        )
         
         padding = max_token_length - tokens.shape[0]
         if padding > 0:
             tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
         elif padding < 0:
-            if drop_tokens_if_exceeded:
-                return None  # return None to be filtered in the batch collate_fn
-            else:
-                tokens = tokens[:max_token_length]
+            tokens = tokens[:max_token_length]
         
         output["tokens"] = tokens.numpy()
         
@@ -326,15 +271,13 @@ def preprocess_dataset(
     write_batch_size: int = (10 ** 6),
     subset_size: Optional[int] = None,
     wds_image_key: Optional[str] = None,
-    wds_caption_answer_key: Optional[str] = None,
-    enable_vqa: bool = False,
+    wds_caption_key: Optional[str] = None,
+    wds_caption_in_metadata: bool = False,
     wds_vqa_question_key: Optional[str] = None,
     clip_model: str = "ViT-B/32",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
     max_token_length: int = 128,
-    drop_tokens_if_exceeded: bool = False, # Drop the answer if it exceeds `max_token_length`.
-    append_space_to_question: bool = True,
     device: str = "cuda:0"
 ):
 
@@ -344,26 +287,21 @@ def preprocess_dataset(
         dataset = FileFolderDataset(
             preprocess,
             input_dataset,
-            enable_vqa=enable_vqa,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
-            max_token_length=max_token_length,
-            drop_tokens_if_exceeded=drop_tokens_if_exceeded,
-            append_space_to_question=append_space_to_question
+            max_token_length=max_token_length
         )
     elif input_format == "webdataset":
         dataset = create_webdataset(
             input_dataset,
             preprocess,
             image_key=wds_image_key,
-            caption_key=wds_caption_answer_key,
-            enable_vqa=enable_vqa,
+            caption_key=wds_caption_key,
+            caption_in_metadata=wds_caption_in_metadata,
             wds_vqa_question_key=wds_vqa_question_key,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
-            max_token_length=max_token_length,
-            drop_tokens_if_exceeded=drop_tokens_if_exceeded,
-            append_space_to_question=append_space_to_question,
+            max_token_length=max_token_length
         )
     else:
         raise Exception(f"No such input format {input_format}")
