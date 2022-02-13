@@ -309,71 +309,71 @@ def demo_generate_captions(
     return generated_captions, prefix
 
 
-def demo(
-    checkpoint_path: str = "./train/latest.pt",
-    prefix_length: int = 40,
-    clip_prefix_length: int = 40,
-    prefix_size: int = 512,
-    mapping_type: str = "mlp",
-    num_layers: int = 8,
-    only_prefix: bool = False,
-    language_model_type: str = "gpt2",
-    language_model_variant: str = "gpt2-xl",
-    clip_model_type: str = "ViT-B/32",
-    load_full_model: bool = True,
-    use_beam_search: bool = False,
-    device: str = "cuda:0",
-    **generation_kwargs
-):
-    clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
+# def demo(
+#     checkpoint_path: str = "./train/latest.pt",
+#     prefix_length: int = 40,
+#     clip_prefix_length: int = 40,
+#     prefix_size: int = 512,
+#     mapping_type: str = "mlp",
+#     num_layers: int = 8,
+#     only_prefix: bool = False,
+#     language_model_type: str = "gpt2",
+#     language_model_variant: str = "gpt2-xl",
+#     clip_model_type: str = "ViT-B/32",
+#     load_full_model: bool = True,
+#     use_beam_search: bool = False,
+#     device: str = "cuda:0",
+#     **generation_kwargs
+# ):
+#     clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
 
-    if language_model_type == "gpt2":
-        language_model = GPT2.create(language_model_variant)
-        tokenizer = GPT2_Tokenizer.create(language_model_variant)
-    else:
-        raise ValueError(f"invalid language model type: '{language_model_type}' (expected 'gpt2')")
+#     if language_model_type == "gpt2":
+#         language_model = GPT2.create(language_model_variant)
+#         tokenizer = GPT2_Tokenizer.create(language_model_variant)
+#     else:
+#         raise ValueError(f"invalid language model type: '{language_model_type}' (expected 'gpt2')")
 
-    if only_prefix:
-        if load_full_model:
-            model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path)
-        else:
-            model = CLIPCaptionPrefixOnly(
-                language_model, prefix_length, clip_length=clip_prefix_length,
-                prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
-            )
-            model.load_state_dict(torch.load(checkpoint_path))
-    else:
-        if load_full_model:
-            model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path)
-        else:
-            model = CLIPCaptionModel(
-                language_model, prefix_length, clip_length=clip_prefix_length,
-                prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
-            )
-            model.load_state_dict(torch.load(checkpoint_path))
+#     if only_prefix:
+#         if load_full_model:
+#             model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path)
+#         else:
+#             model = CLIPCaptionPrefixOnly(
+#                 language_model, prefix_length, clip_length=clip_prefix_length,
+#                 prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
+#             )
+#             model.load_state_dict(torch.load(checkpoint_path))
+#     else:
+#         if load_full_model:
+#             model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path)
+#         else:
+#             model = CLIPCaptionModel(
+#                 language_model, prefix_length, clip_length=clip_prefix_length,
+#                 prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
+#             )
+#             model.load_state_dict(torch.load(checkpoint_path))
     
-    model = model.to(device)
-    model = model.eval()
+#     model = model.to(device)
+#     model = model.eval()
 
-    try:
-        while True:
-            print("CLIP-Image-Captioning inference demo\n")
+#     try:
+#         while True:
+#             print("CLIP-Image-Captioning inference demo\n")
 
-            image_path_url = input("enter image url or path > ")
+#             image_path_url = input("enter image url or path > ")
 
-            image = io.imread(image_path_url)
-            image = Image.fromarray(image)
+#             image = io.imread(image_path_url)
+#             image = Image.fromarray(image)
 
-            caption = demo_generate_captions(
-                model, tokenizer, clip_model, preprocess, image,
-                use_beam_search=use_beam_search, device=device, **generation_kwargs
-            )
+#             caption = demo_generate_captions(
+#                 model, tokenizer, clip_model, preprocess, image,
+#                 use_beam_search=use_beam_search, device=device, **generation_kwargs
+#             )
 
-            print(caption)
-            print()
-    except KeyboardInterrupt:
-        print("exiting...")
-        exit(0)
+#             print(caption)
+#             print()
+#     except KeyboardInterrupt:
+#         print("exiting...")
+#         exit(0)
 
 
 def _shutterstock_demo(
