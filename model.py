@@ -16,8 +16,8 @@ class CLIPCaptionModel(pl.LightningModule):
         self.save_hyperparameters(kwargs)
         
         # Deepspeed will load the models using configure_sharded_model().
-        if not self.hparams.use_deepspeed:
-            self.init_models()
+        # if not self.hparams.use_deepspeed: TODO: attempt fix?
+        self.init_models()
 
     def init_models(self):
         """ Loads the language model and the mapping layers. """
