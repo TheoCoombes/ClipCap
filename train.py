@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from typing import Optional
@@ -49,6 +50,7 @@ def train(
     language_model_type = "gpt2",
     language_model_variant = "gpt2-xl",
     batch_size: int = 256,
+    optimizer_lr: float = 2e-5,
     prefix_only: bool = False,
     mapping_type: str = "transformer",
     num_layers: int = 8,
@@ -61,6 +63,9 @@ def train(
     deepspeed_strategy: Optional[str] = None
 ):
     """ Starts the main training process. """ # TODO arg docs.
+
+    print(f'Using pytorch version {torch.__version__}')
+    print('Args: ', locals())
 
     # Prepare training datasets.
     if merge_datasets:
@@ -96,7 +101,8 @@ def train(
         "mapping_type": mapping_type,
         "scheduler_warmup_steps": scheduler_warmup_steps,
         "total_steps": total_steps,
-        "use_deepspeed": use_deepspeed
+        "use_deepspeed": use_deepspeed,
+        "optimizer_lr": optimizer_lr
     }
 
     if prefix_only:

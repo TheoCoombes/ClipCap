@@ -65,6 +65,9 @@ class CLIPCaptionModel(pl.LightningModule):
         prefix_projections = self.clip_project(prefix).view(-1, self.hparams.prefix_length, self.lm_embedding_size)
         embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
 
+        device = tokens.device
+        mask = torch.cat((torch.ones(prefix_projections.shape[:-1], dtype=torch.bool, device=device), mask), dim=1)  # adding prefix mask
+
         if labels is not None:
             dummy_token = torch.zeros(tokens.shape[0], self.hparams.prefix_length, dtype=torch.int64)
             labels = torch.cat((dummy_token, tokens), dim=1)
@@ -76,7 +79,7 @@ class CLIPCaptionModel(pl.LightningModule):
     def configure_optimizers(self):
         """ Returns a dict containing the model's optimizer and loss rate scheduler. """
 
-        if self.use_deepspeed:
+        if self.hparams.use_deepspeed:
             from deepspeed.ops.adam import FusedAdam
             optimizer = FusedAdam(self.parameters(), lr=self.hparams.optimizer_lr, adam_w_mode=True)
         else: 
@@ -111,10 +114,8 @@ class CLIPCaptionModel(pl.LightningModule):
 
         mask = tokens.ge(0)  # mask is zero where we out of sequence
         tokens[~mask] = 0
-        mask = mask.float()
-        mask = torch.cat((torch.ones(self.hparams.prefix_length), mask), dim=0)  # adding prefix mask
 
-        outputs = self(tokens, prefix, mask)
+        outputs = self.forward(tokens, prefix, mask)
 
         logits = outputs.logits[:, self.hparams.prefix_length - 1: -1]
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
