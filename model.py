@@ -62,7 +62,7 @@ class CLIPCaptionModel(pl.LightningModule):
                 labels: Optional[torch.Tensor] = None):
         embedding_text = self.language_model.get_embedding_text(tokens)
 
-        prefix_projections = self.clip_project(prefix).view(-1, self.hparams.prefix_length, self.lm_embedding_size)
+        prefix_projections = self.clip_project(prefix)
         embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
 
         device = tokens.device
