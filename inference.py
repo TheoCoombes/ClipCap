@@ -530,5 +530,6 @@ def _shutterstock_demo(
     with open(f"{out_filename_prefix}_shutterstock.json", "w+") as f:
         json.dump(sample_data, f)
 
+
 if __name__ == "__main__":
     fire.Fire(_shutterstock_demo)

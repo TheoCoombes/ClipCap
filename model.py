@@ -48,6 +48,8 @@ class CLIPCaptionModel(pl.LightningModule):
                     dim_clip=self.hparams.prefix_size,
                     dim_embedding=self.lm_embedding_size,
                     prefix_length=self.hparams.prefix_length,
+                    clip_length=self.hparams.clip_prefix_length,
+                    use_pos_embeddings=self.hparams.pos_embeddings,
                     num_heads=self.hparams.num_attention_heads,
                     num_layers=self.hparams.num_layers
                 )
