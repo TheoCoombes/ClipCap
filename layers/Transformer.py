@@ -14,13 +14,13 @@ class Transformer(nn.Module):
             dim_ref = dim_self
         else:
             dim_ref = dim_ref
-        
+
         dim_self = dim_self
         self.enc_dec = enc_dec
-        
+
         if self.enc_dec:
             num_layers = num_layers * 2
-        
+
         layers = []
         for i in range(num_layers):
             if i % 2 == 0 and enc_dec:
@@ -38,7 +38,7 @@ class Transformer(nn.Module):
                 layers.append(
                     TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, act=act, norm_layer=norm_layer)
                 )
-        
+
         self.layers = nn.ModuleList(layers)
 
 
@@ -48,7 +48,7 @@ class Transformer(nn.Module):
         for layer in self.layers:
             x, att = layer.forward_with_attention(x, y, mask)
             attentions.append(att)
-        
+
         return x, attentions
 
 
@@ -63,7 +63,7 @@ class Transformer(nn.Module):
             else:
                 # self or cross
                 x = layer(x, y, mask)
-        
+
         return x
 
 
@@ -116,15 +116,18 @@ class TransformerMapper(nn.Module):
 
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, num_heads, num_layers)
-        self.linear = nn.Linear(dim_clip, clip_length * dim_embedding)
+        self.linear = nn.Linear(dim_clip, dim_embedding)
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
 
     def forward(self, x):
-        x = self.linear(x).view(x.shape[0], self.clip_length, -1)
+        x = self.linear(x)
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
 
-        out = self.transformer(prefix)[:, self.clip_length:]
+        #out = self.transformer(prefix)[:, self.clip_length:]
+
+        clip_seq_len = x.shape[1]
+        out = self.transformer(prefix)[:, clip_seq_len:]
 
         return out
