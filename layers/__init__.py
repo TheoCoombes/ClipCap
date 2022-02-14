@@ -1,2 +1,2 @@
-from .Transformer import TransformerMapper
+from .Transformer import TransformerMapper, TransformerMapperAllFeatures
 from .MLP import MLP

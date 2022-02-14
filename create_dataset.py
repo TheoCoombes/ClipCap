@@ -279,34 +279,36 @@ def preprocess_dataset(
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
     max_token_length: int = 128,
+    use_all_vit_features: bool = True,
     device: str = "cuda:0"
 ):
 
     model, preprocess = clip.load(clip_model, device=device, jit=False)
 
-    def vit_forward_patch(self, x: torch.Tensor):
-        x = self.conv1(x)  # shape = [*, width, grid, grid]
-        x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
-        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
-        x = x + self.positional_embedding.to(x.dtype)
-        x = self.ln_pre(x)
+    if use_all_vit_features:
+        def vit_forward_patch(self, x: torch.Tensor):
+            x = self.conv1(x)  # shape = [*, width, grid, grid]
+            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
+            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+            x = x + self.positional_embedding.to(x.dtype)
+            x = self.ln_pre(x)
 
-        x = x.permute(1, 0, 2)  # NLD -> LND
-        x = self.transformer(x)
-        x = x.permute(1, 0, 2)  # LND -> NLD
+            x = x.permute(1, 0, 2)  # NLD -> LND
+            x = self.transformer(x)
+            x = x.permute(1, 0, 2)  # LND -> NLD
 
-        # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
-        # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
+            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
+            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
 
-        #x = self.ln_post(x[:, 0, :])
+            #x = self.ln_post(x[:, 0, :])
 
-        #if self.proj is not None:
-        #    x = x @ self.proj
+            #if self.proj is not None:
+            #    x = x @ self.proj
 
-        return x
+            return x
 
-    model.visual.forward = vit_forward_patch.__get__(model.visual, VisionTransformer)
+        model.visual.forward = vit_forward_patch.__get__(model.visual, VisionTransformer)
 
     if input_format == "files":
         dataset = FileFolderDataset(

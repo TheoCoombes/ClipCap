@@ -8,6 +8,7 @@ from PIL import Image
 import numpy as np
 import torch
 import clip
+from clip.model import VisionTransformer
 import fire
 
 from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
@@ -212,14 +213,13 @@ def generate_no_beam(
     entry_length: int = 67,
     temperature: float = 1.0,
     stop_token: str = '.',
-    repetition_penalty: float = 1.0,
+    repetition_penalty: float = 1.2,
 ):
 
     stop_token = tokenizer.encode_text(stop_token)[0]
-    print("Generate_no_beam")
+    print(f'Generate_no_beam (repetition_penalty: {repetition_penalty:.2f})')
     filter_value = -float(np.inf)
     generations = []
-    repetition_penalty = 1.2
 
     with torch.no_grad():
         if text_prefix_tokens is not None:
@@ -286,7 +286,7 @@ def demo_generate_captions(
 
     with torch.no_grad():
         prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
-        prefix_embed = model.clip_project(prefix).reshape(-1, model.prefix_length, model.lm_embedding_size)
+        prefix_embed = model.clip_project(prefix)   #.reshape(-1, model.prefix_length, model.lm_embedding_size)
     
     if text_prefix is not None:
         text_prefix_tokens = torch.tensor(tokenizer.encode_text(text_prefix), device=device).unsqueeze(0)
@@ -298,7 +298,6 @@ def demo_generate_captions(
             number_to_generate=number_to_generate, text_prefix_tokens=text_prefix_tokens,
             **generation_kwargs)
     else:
-
         generated_captions = generate_no_beam(model, tokenizer, prefix_embed,
             number_to_generate=number_to_generate, text_prefix_tokens=text_prefix_tokens,
             **generation_kwargs)
@@ -391,9 +390,35 @@ def _shutterstock_demo(
     hf_cache_dir: Optional[str] = None,
     total_samples: int = 100,
     load_pl_checkpoint: bool = True,
+    use_all_vit_features: bool = True,
     **model_kwargs
 ):
     clip_model, preprocess = clip.load(clip_model, device=device, jit=False)
+
+    if use_all_vit_features:
+        def vit_forward_patch(self, x: torch.Tensor):
+            x = self.conv1(x)  # shape = [*, width, grid, grid]
+            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
+            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+            x = x + self.positional_embedding.to(x.dtype)
+            x = self.ln_pre(x)
+
+            x = x.permute(1, 0, 2)  # NLD -> LND
+            x = self.transformer(x)
+            x = x.permute(1, 0, 2)  # LND -> NLD
+
+            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
+            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
+
+            #x = self.ln_post(x[:, 0, :])
+
+            #if self.proj is not None:
+            #    x = x @ self.proj
+
+            return x
+
+        clip_model.visual.forward = vit_forward_patch.__get__(clip_model.visual, VisionTransformer)
 
     if language_model_type == "gpt2":
         language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)
@@ -449,6 +474,9 @@ def _shutterstock_demo(
             number_to_generate=number_to_generate, text_prefix=text_prefix
         )
 
+        print(image_file)
+        print(captions)
+
         url = metadata["src"]
         original_caption = metadata["alt"]
 
@@ -460,22 +488,22 @@ def _shutterstock_demo(
         image_features /= image_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
-        similarities = similarities.tolist()
+        #similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
+        #similarities = similarities.tolist()
 
-        original_sim = similarities[0][0]
-        generated_sims = similarities[0][1:]
+        #original_sim = similarities[0][0]
+        #generated_sims = similarities[0][1:]
 
-        best_sim = max(generated_sims)
-        best_caption = captions[generated_sims.index(best_sim)]
+        #best_sim = max(generated_sims)
+        #best_caption = captions[generated_sims.index(best_sim)]
 
         sample_data[url] = {
             "original_caption": original_caption,
-            "original_sim": original_sim,
+            #"original_sim": original_sim,
             "generated_captions": captions,
-            "generated_sim": generated_sims,
-            "best_caption": best_caption,
-            "best_sim": best_sim
+            #"generated_sim": generated_sims,
+            #"best_caption": best_caption,
+            #"best_sim": best_sim
         }
 
         # Collect the records we'll need for scoring

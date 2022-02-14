@@ -116,6 +116,25 @@ class TransformerMapper(nn.Module):
 
         self.clip_length = clip_length
         self.transformer = Transformer(dim_embedding, num_heads, num_layers)
+        self.linear = nn.Linear(dim_clip, clip_length * dim_embedding)
+        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+
+    def forward(self, x):
+        x = self.linear(x).view(x.shape[0], self.clip_length, -1)
+
+        prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
+        prefix = torch.cat((x, prefix), dim=1)
+
+        out = self.transformer(prefix)[:, self.clip_length:]
+
+        return out
+
+    
+class TransformerMapperAllFeatures(nn.Module):
+    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, num_heads: int = 8, num_layers: int = 8):
+        super().__init__()
+
+        self.transformer = Transformer(dim_embedding, num_heads, num_layers)
         self.linear = nn.Linear(dim_clip, dim_embedding)
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
 
@@ -124,8 +143,6 @@ class TransformerMapper(nn.Module):
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
-
-        #out = self.transformer(prefix)[:, self.clip_length:]
 
         clip_seq_len = x.shape[1]
         out = self.transformer(prefix)[:, clip_seq_len:]

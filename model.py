@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import pytorch_lightning as pl
 import torch
 
-from layers import TransformerMapper, MLP
+from layers import TransformerMapper, TransformerMapperAllFeatures, MLP
 from lms import GPT2, GPTJ, T0
 
 
@@ -43,14 +43,23 @@ class CLIPCaptionModel(pl.LightningModule):
                 self.lm_embedding_size * self.hparams.prefix_length
             ))
         elif self.hparams.mapping_type == 'transformer':
-            self.clip_project = TransformerMapper(
-                dim_clip=self.hparams.prefix_size,
-                dim_embedding=self.lm_embedding_size,
-                prefix_length=self.hparams.prefix_length,
-                clip_length=self.hparams.clip_prefix_length,
-                num_heads=self.hparams.num_attention_heads,
-                num_layers=self.hparams.num_layers
-            )
+            if self.hparams.use_all_vit_features:
+                self.clip_project = TransformerMapperAllFeatures(
+                    dim_clip=self.hparams.prefix_size,
+                    dim_embedding=self.lm_embedding_size,
+                    prefix_length=self.hparams.prefix_length,
+                    num_heads=self.hparams.num_attention_heads,
+                    num_layers=self.hparams.num_layers
+                )
+            else:
+                self.clip_project = TransformerMapper(
+                    dim_clip=self.hparams.prefix_size,
+                    dim_embedding=self.lm_embedding_size,
+                    prefix_length=self.hparams.prefix_length,
+                    clip_length=self.hparams.clip_prefix_length,
+                    num_heads=self.hparams.num_attention_heads,
+                    num_layers=self.hparams.num_layers
+                )
         else:
             raise ValueError(f"invalid mapping type: '{self.hparams.mapping_type}' (choose from 'mlp'/'transformer')")
 
