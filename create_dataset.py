@@ -281,7 +281,7 @@ def preprocess_dataset(
     device: str = "cuda:0"
 ):
 
-    model = CLIPModel.from_pretrained(hf_clip_model).to(device)
+    model = CLIPModel.from_pretrained(hf_clip_model).eval().to(device)
     preprocess = CLIPProcessor.from_pretrained(hf_clip_model)
 
     if input_format == "files":
