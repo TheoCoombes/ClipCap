@@ -324,7 +324,7 @@ def preprocess_dataset(
     c = 0
     bar = tqdm.tqdm()
     for items in data:
-        pixel_values = items["pixel_values"].to(device)
+        pixel_values = items["image_tensor"].to(device)
 
         with torch.no_grad():
             if use_all_vit_features:
