@@ -303,8 +303,8 @@ def preprocess_dataset(
 
             #x = self.ln_post(x[:, 0, :])
 
-            #if self.proj is not None:
-            #    x = x @ self.proj
+            if self.proj is not None:
+                x = x @ self.proj
 
             return x
 

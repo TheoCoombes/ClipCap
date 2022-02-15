@@ -139,7 +139,7 @@ class TransformerMapperAllFeatures(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
         if use_pos_embeddings:
             print('Using position embeddings.')
-            self.pos_embeddings = nn.Parameter(torch.randn(clip_length, dim_embedding) * 0.01, requires_grad=True)
+            self.pos_embeddings = nn.Parameter(torch.randn(clip_length, dim_embedding), requires_grad=True)
         else:
             self.pos_embeddings = None
 

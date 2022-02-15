@@ -44,6 +44,7 @@ class CLIPCaptionModel(pl.LightningModule):
             ))
         elif self.hparams.mapping_type == 'transformer':
             if self.hparams.use_all_vit_features:
+                print('Using all ViT features.')
                 self.clip_project = TransformerMapperAllFeatures(
                     dim_clip=self.hparams.prefix_size,
                     dim_embedding=self.lm_embedding_size,
