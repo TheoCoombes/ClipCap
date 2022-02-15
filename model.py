@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import pytorch_lightning as pl
 import torch
 
-from layers import TransformerMapper, TransformerMapperAllFeatures, MLP
+from layers import TransformerMapper, TransformerMapperAllFeatures
 from lms import GPT2, GPTJ, T0
 
 
@@ -35,36 +35,26 @@ class CLIPCaptionModel(pl.LightningModule):
         # Get the size of the LM's embeddings.
         self.lm_embedding_size = self.language_model.get_embedding_size()
 
-        # load mapping layers
-        if self.hparams.mapping_type == 'mlp':
-            self.clip_project = MLP((
-                self.hparams.prefix_size,
-                (self.lm_embedding_size * self.hparams.prefix_length) // 2,
-                self.lm_embedding_size * self.hparams.prefix_length
-            ))
-        elif self.hparams.mapping_type == 'transformer':
-            if self.hparams.use_all_vit_features:
-                print('Using all ViT features.')
-                self.clip_project = TransformerMapperAllFeatures(
-                    dim_clip=self.hparams.prefix_size,
-                    dim_embedding=self.lm_embedding_size,
-                    prefix_length=self.hparams.prefix_length,
-                    clip_length=self.hparams.clip_prefix_length,
-                    use_pos_embeddings=self.hparams.pos_embeddings,
-                    num_heads=self.hparams.num_attention_heads,
-                    num_layers=self.hparams.num_layers
-                )
-            else:
-                self.clip_project = TransformerMapper(
-                    dim_clip=self.hparams.prefix_size,
-                    dim_embedding=self.lm_embedding_size,
-                    prefix_length=self.hparams.prefix_length,
-                    clip_length=self.hparams.clip_prefix_length,
-                    num_heads=self.hparams.num_attention_heads,
-                    num_layers=self.hparams.num_layers
-                )
+        if self.hparams.use_all_vit_features:
+            print('Using all ViT features.')
+            self.clip_project = TransformerMapperAllFeatures(
+                dim_clip=self.hparams.prefix_size,
+                dim_embedding=self.lm_embedding_size,
+                prefix_length=self.hparams.prefix_length,
+                clip_length=self.hparams.clip_prefix_length,
+                use_pos_embeddings=self.hparams.pos_embeddings,
+                num_heads=self.hparams.num_attention_heads,
+                num_layers=self.hparams.num_layers
+            )
         else:
-            raise ValueError(f"invalid mapping type: '{self.hparams.mapping_type}' (choose from 'mlp'/'transformer')")
+            self.clip_project = TransformerMapper(
+                dim_clip=self.hparams.prefix_size,
+                dim_embedding=self.lm_embedding_size,
+                prefix_length=self.hparams.prefix_length,
+                clip_length=self.hparams.clip_prefix_length,
+                num_heads=self.hparams.num_attention_heads,
+                num_layers=self.hparams.num_layers
+            )
 
     def configure_sharded_model(self):
         """ [deepspeed] Shards the models on initialization to prevent OOM errors. """
@@ -72,6 +62,7 @@ class CLIPCaptionModel(pl.LightningModule):
 
     def forward(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None,
                 labels: Optional[torch.Tensor] = None):
+            
         embedding_text = self.language_model.get_embedding_text(tokens)
 
         prefix_projections = self.clip_project(prefix)

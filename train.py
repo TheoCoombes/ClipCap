@@ -10,9 +10,10 @@ from dataset import TokenPrefixDataset, MultiplePrefixDataset
 
 class CheckpointSaver(pl.Callback):
     def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1,
-            save_every_n_steps: Optional[int] = 1000):
+            save_every_n_steps: Optional[int] = 1000, use_deepspeed: bool = False):
         output_path.mkdir(exist_ok=True)
 
+        self.use_deepspeed = use_deepspeed
         self.output_path = output_path
         self.filename_prefix = filename_prefix
         self.save_every_n_epochs = save_every_n_epochs
@@ -21,18 +22,18 @@ class CheckpointSaver(pl.Callback):
     def on_epoch_end(self, trainer: pl.Trainer, _):
         epoch = trainer.current_epoch
         if epoch % self.save_every_n_epochs == 0:
-            output_path = self.output_path / f"{self.filename_prefix}_epoch_{epoch}.ckpt"
+            output_path = self.output_path / f"{self.filename_prefix}_epoch_{epoch}{'.ckpt' if self.use_deepspeed else ''}"
             trainer.save_checkpoint(output_path)
     
     def on_batch_end(self, trainer: pl.Trainer, _):
         if self.save_every_n_steps is not None:
             current_step = trainer.global_step
             if (current_step % self.save_every_n_steps == 0):
-                output_path = self.output_path / f"{self.filename_prefix}_latest.ckpt"
+                output_path = self.output_path / f"{self.filename_prefix}_latest{'.ckpt' if self.use_deepspeed else ''}"
                 trainer.save_checkpoint(output_path)
     
     def save_final_checkpoint(self, trainer: pl.Trainer):
-        output_path = self.output_path / f"{self.filename_prefix}_final.ckpt"
+        output_path = self.output_path / f"{self.filename_prefix}_final{'.ckpt' if self.use_deepspeed else ''}"
         trainer.save_checkpoint(output_path)
 
 
@@ -53,7 +54,6 @@ def train(
     batch_size: int = 256,
     optimizer_lr: float = 2e-5,
     prefix_only: bool = False,
-    mapping_type: str = "transformer",
     use_all_vit_features: bool = True,
     num_layers: int = 8,
     num_attention_heads: int = 8,
@@ -101,7 +101,6 @@ def train(
         "prefix_size": prefix_size,
         "num_layers": num_layers,
         "num_attention_heads": num_attention_heads,
-        "mapping_type": mapping_type,
         "use_all_vit_features": use_all_vit_features,
         "pos_embeddings": pos_embeddings,
         "scheduler_warmup_steps": scheduler_warmup_steps,
@@ -126,7 +125,8 @@ def train(
         Path(output_dir),
         output_name_prefix,
         save_every_n_epochs=save_every_epochs,
-        save_every_n_steps=save_every_steps
+        save_every_n_steps=save_every_steps,
+        use_deepspeed=use_deepspeed
     )
 
     if use_wandb:
