@@ -1,17 +1,16 @@
 """ A modified version of clip_inference.py from rom1504/clip-retrieval """
 
 from torch.utils.data.dataloader import default_collate
+from transformers import CLIPModel, CLIPProcessor
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image, UnidentifiedImageError
-from typing import Tuple, Optional
+from typing import Optional
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
 import numpy as np
 import fsspec
 import torch
-import clip
-from clip.model import VisionTransformer
 import json
 import tqdm
 import fire
@@ -81,12 +80,12 @@ class FileFolderDataset(Dataset):
 
         try:
             image_file = self.image_files[key]
-            image_tensor = self.image_transform(Image.open(image_file))
+            image_tensor = self.image_transform(images=Image.open(image_file), return_tensors="pt")
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image {image_file}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
-        output["image_tensor"] = image_tensor
+        output["image_tensor"] = image_tensor["pixel_values"]
 
         text_file = self.text_files[key]
         caption = text_file.read_text()
@@ -152,8 +151,8 @@ def create_webdataset(
 
         image_data = item[image_key]
         image = Image.open(io.BytesIO(image_data))
-        image_tensor = image_transform(image)
-        output["image_tensor"] = image_tensor
+        image_tensor = image_transform(images=image, return_tensors="pt")
+        output["image_tensor"] = image_tensor["pixel_values"]
 
         if not caption_in_metadata:
             text = item[caption_key]
@@ -275,7 +274,7 @@ def preprocess_dataset(
     wds_caption_key: Optional[str] = None,
     wds_caption_in_metadata: bool = False,
     wds_vqa_question_key: Optional[str] = None,
-    clip_model: str = "ViT-B/32",
+    hf_clip_model: str = "openai/clip-vit-large-patch14",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
     max_token_length: int = 128,
@@ -283,32 +282,8 @@ def preprocess_dataset(
     device: str = "cuda:0"
 ):
 
-    model, preprocess = clip.load(clip_model, device=device, jit=False)
-
-    if use_all_vit_features:
-        def vit_forward_patch(self, x: torch.Tensor):
-            x = self.conv1(x)  # shape = [*, width, grid, grid]
-            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
-            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
-            x = x + self.positional_embedding.to(x.dtype)
-            x = self.ln_pre(x)
-
-            x = x.permute(1, 0, 2)  # NLD -> LND
-            x = self.transformer(x)
-            x = x.permute(1, 0, 2)  # LND -> NLD
-
-            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
-            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
-
-            #x = self.ln_post(x[:, 0, :])
-
-            if self.proj is not None:
-                x = x @ self.proj
-
-            return x
-
-        model.visual.forward = vit_forward_patch.__get__(model.visual, VisionTransformer)
+    model = CLIPModel.from_pretrained(hf_clip_model).to(device)
+    preprocess = CLIPProcessor.from_pretrained(hf_clip_model)
 
     if input_format == "files":
         dataset = FileFolderDataset(
@@ -351,14 +326,19 @@ def preprocess_dataset(
     c = 0
     bar = tqdm.tqdm()
     for items in data:
+        pixel_values = items["pixel_values"]
+
         with torch.no_grad():
-            image_embs = model.encode_image(
-                items["image_tensor"].to(device)
-            ).cpu().numpy()
+            if use_all_vit_features:
+                outputs = model.vision_model(pixel_values=pixel_values).last_hidden_state
+                outputs = model.vision_model.post_layernorm(outputs)
+                outputs = model.visual_projection(outputs)
+            else:
+                outputs = model.get_image_features(pixel_values=pixel_values)
 
-            tokens = items["tokens"]
+        tokens = items["tokens"]
 
-            output_sink.add(image_embs, tokens)
+        output_sink.add(outputs, tokens)
 
         bar.update(batch_size)
         c += batch_size

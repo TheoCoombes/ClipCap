@@ -91,7 +91,7 @@ def train(
         dataset = TokenPrefixDataset(data_dir, batch_size=batch_size, normalize_prefix=normalize_prefix)
 
     # TODO find better solution for using `get_linear_schedule_with_warmup` with PL.
-    total_steps = len(dataset) * epochs
+    total_steps = len(dataset) * epochs # batch size is already accounted for in `len(dataset)`
 
     model_kwargs = {
         "language_model_type": language_model_type,
