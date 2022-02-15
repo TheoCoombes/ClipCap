@@ -112,7 +112,7 @@ class CLIPCaptionModel(pl.LightningModule):
         
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
     
-    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], _):
+    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int):
         """
         The model's main training step.
         `batch` contains a tuple of the caption's tokens, attention mask and the CLIP embedding (prefix). [see `dataset.py`]
@@ -131,6 +131,12 @@ class CLIPCaptionModel(pl.LightningModule):
 
         logits = outputs.logits[:, self.hparams.prefix_length - 1: -1]
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
+
+        self.log_dict({
+            "train/loss": loss,
+            "train/step": batch_idx,
+            "train/epoch": self.current_epoch
+        })
         
         return loss
 

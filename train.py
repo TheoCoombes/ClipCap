@@ -60,6 +60,7 @@ def train(
     normalize_prefix: bool = False,
     merge_datasets: bool = False,
     use_deepspeed: bool = False,
+    use_wandb: bool = False,
     use_16bit_precision: bool = True,
     gpu_devices: Optional[str] = "0",
     deepspeed_strategy: Optional[str] = None
@@ -127,6 +128,13 @@ def train(
         save_every_n_epochs=save_every_epochs,
         save_every_n_steps=save_every_steps
     )
+
+    if use_wandb:
+        from pytorch_lightning.loggers import WandbLogger
+        logger = WandbLogger(project="CLIP-Image-Captioning")
+        logger.watch(model)
+    else:
+        logger = None
     
     # TODO better dataset implementation
     # - Improve dataloader system (batch_size=1 is a temporary fix)
@@ -139,7 +147,8 @@ def train(
         max_epochs=epochs,
         callbacks=[checkpoint_saver],
         strategy=deepspeed_strategy,
-        precision=(16 if use_16bit_precision else 32)
+        precision=(16 if use_16bit_precision else 32),
+        logger=logger
     )
 
     # Run training process.
