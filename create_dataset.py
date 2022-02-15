@@ -273,7 +273,6 @@ def preprocess_dataset(
     wds_image_key: Optional[str] = None,
     wds_caption_key: Optional[str] = None,
     wds_caption_in_metadata: bool = False,
-    wds_vqa_question_key: Optional[str] = None,
     hf_clip_model: str = "openai/clip-vit-large-patch14",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
@@ -300,7 +299,6 @@ def preprocess_dataset(
             image_key=wds_image_key,
             caption_key=wds_caption_key,
             caption_in_metadata=wds_caption_in_metadata,
-            wds_vqa_question_key=wds_vqa_question_key,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length
@@ -326,7 +324,7 @@ def preprocess_dataset(
     c = 0
     bar = tqdm.tqdm()
     for items in data:
-        pixel_values = items["pixel_values"]
+        pixel_values = items["pixel_values"].to(device)
 
         with torch.no_grad():
             if use_all_vit_features:
@@ -335,7 +333,8 @@ def preprocess_dataset(
                 outputs = model.visual_projection(outputs)
             else:
                 outputs = model.get_image_features(pixel_values=pixel_values)
-
+        
+        outputs = outputs.cpu().numpy()
         tokens = items["tokens"]
 
         output_sink.add(outputs, tokens)
