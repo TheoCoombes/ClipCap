@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from typing import Optional
@@ -45,12 +46,15 @@ def train(
     scheduler_warmup_steps: int = 500,
     prefix_length: int = 10,
     prefix_size: int = 768,
-    clip_prefix_length: int = 10,
+    clip_prefix_length: int = 50,       # e.g. reduce to 10 when not using all vit-features
+    pos_embeddings: bool = False,        # learn position embedding in mapping transformer
     language_model_type = "gpt2",
     language_model_variant = "gpt2-xl",
     batch_size: int = 256,
+    optimizer_lr: float = 2e-5,
     prefix_only: bool = False,
     mapping_type: str = "transformer",
+    use_all_vit_features: bool = True,
     num_layers: int = 8,
     num_attention_heads: int = 8,
     normalize_prefix: bool = False,
@@ -61,6 +65,9 @@ def train(
     deepspeed_strategy: Optional[str] = None
 ):
     """ Starts the main training process. """ # TODO arg docs.
+
+    print(f'Using pytorch version {torch.__version__}')
+    print('Args: ', locals())
 
     # Prepare training datasets.
     if merge_datasets:
@@ -94,9 +101,12 @@ def train(
         "num_layers": num_layers,
         "num_attention_heads": num_attention_heads,
         "mapping_type": mapping_type,
+        "use_all_vit_features": use_all_vit_features,
+        "pos_embeddings": pos_embeddings,
         "scheduler_warmup_steps": scheduler_warmup_steps,
         "total_steps": total_steps,
-        "use_deepspeed": use_deepspeed
+        "use_deepspeed": use_deepspeed,
+        "optimizer_lr": optimizer_lr
     }
 
     if prefix_only:

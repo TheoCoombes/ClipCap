@@ -14,13 +14,13 @@ class Transformer(nn.Module):
             dim_ref = dim_self
         else:
             dim_ref = dim_ref
-        
+
         dim_self = dim_self
         self.enc_dec = enc_dec
-        
+
         if self.enc_dec:
             num_layers = num_layers * 2
-        
+
         layers = []
         for i in range(num_layers):
             if i % 2 == 0 and enc_dec:
@@ -38,7 +38,7 @@ class Transformer(nn.Module):
                 layers.append(
                     TransformerLayer(dim_self, dim_ref, num_heads, mlp_ratio, act=act, norm_layer=norm_layer)
                 )
-        
+
         self.layers = nn.ModuleList(layers)
 
 
@@ -48,7 +48,7 @@ class Transformer(nn.Module):
         for layer in self.layers:
             x, att = layer.forward_with_attention(x, y, mask)
             attentions.append(att)
-        
+
         return x, attentions
 
 
@@ -63,7 +63,7 @@ class Transformer(nn.Module):
             else:
                 # self or cross
                 x = layer(x, y, mask)
-        
+
         return x
 
 
@@ -111,7 +111,7 @@ class TransformerLayer(nn.Module):
 
 
 class TransformerMapper(nn.Module):
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_heads: int = 8, num_layers: int = 8):
+    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_heads: int=8, num_layers: int=8):
         super().__init__()
 
         self.clip_length = clip_length
@@ -126,5 +126,36 @@ class TransformerMapper(nn.Module):
         prefix = torch.cat((x, prefix), dim=1)
 
         out = self.transformer(prefix)[:, self.clip_length:]
+
+        return out
+
+    
+class TransformerMapperAllFeatures(nn.Module):
+    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, use_pos_embeddings: bool, num_heads: int=8, num_layers: int=8):
+        super().__init__()
+
+        self.transformer = Transformer(dim_embedding, num_heads, num_layers)
+        self.linear = nn.Linear(dim_clip, dim_embedding)
+        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        if use_pos_embeddings:
+            print('Using position embeddings.')
+            self.pos_embeddings = nn.Parameter(torch.randn(clip_length, dim_embedding), requires_grad=True)
+        else:
+            self.pos_embeddings = None
+
+    def forward(self, x):
+        batch_size = x.shape[0]
+
+        x = self.linear(x)
+
+        if self.pos_embeddings is not None:
+            p = self.pos_embeddings.unsqueeze(0).expand(batch_size, *self.pos_embeddings.shape)
+            x = x + p
+
+        prefix = self.prefix_const.unsqueeze(0).expand(batch_size, *self.prefix_const.shape)
+        prefix = torch.cat((x, prefix), dim=1)
+
+        clip_seq_len = x.shape[1]
+        out = self.transformer(prefix)[:, clip_seq_len:]
 
         return out

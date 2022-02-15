@@ -18,8 +18,12 @@ def _read_numpy_header(f):
         min(file_size, 300)
     ).split(b"\n")[0]
 
-    result = re.search(r"'shape': \(([0-9]+), ([0-9]+)\)", str(first_line))
-    shape = (int(result.group(1)), int(result.group(2)))
+    result = re.search(r"'shape': \(([0-9]+), ([0-9]+)(?:,\W([0-9]+))?\)", str(first_line))
+    captures = result.groups()
+    if captures[2] is not None:
+        shape = (int(captures[0]), int(captures[1]), int(captures[2]))
+    else:
+        shape = (int(captures[0]), int(captures[1]))
 
     dtype = re.search(r"'descr': '([<(if)0-9]+)'", str(first_line)).group(1)
 
@@ -34,15 +38,20 @@ class NumpyLazyNdArray(object):
     def __init__(self, f):
         self.f = f
         (self.shape, self.dtype, self.header_offset) = _read_numpy_header(f)
-        self.byteperitem = np.dtype(self.dtype).itemsize * self.shape[1]
+
+        self.byteperitem = np.dtype(self.dtype).itemsize
+        for i in range(1, len(self.shape)):
+            self.byteperitem *= self.shape[i]
+
         self.num_rows = self.shape[0]
 
     def get_rows(self, start: int, end: int) -> np.ndarray:
         length = end - start
+        out_shape = (length,) + self.shape[1:]
         self.f.seek(self.header_offset + start * self.byteperitem)
         return np.frombuffer(
             self.f.read(length * self.byteperitem), dtype=self.dtype
-        ).reshape((length, self.shape[1]))
+        ).reshape(out_shape)
 
 class NumpyMatrixReader(ABC):
     """Read a numpy file and provide its shape, row count and ndarray. Behaves as a context manager"""
