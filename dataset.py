@@ -166,10 +166,11 @@ class TokenPrefixDataset(IterableDataset):
             
                 if self.normalize_prefix:
                     prefixes = prefixes / prefixes.norm(2, -1)
+                
+                sample_index += add_from_reader
 
                 yield (tokens, prefixes)
 
-                sample_index += add_from_reader
             
             # Close file IOs to prepare next .npy files.
             prefix_reader.close()
