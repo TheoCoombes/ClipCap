@@ -99,7 +99,7 @@ class CLIPCaptionModel(pl.LightningModule):
         mask = tokens.ge(0)  # mask is zero where we out of sequence
         tokens[~mask] = 0
 
-        outputs = self.forward(tokens, prefix, mask)
+        outputs = self(tokens, prefix, mask)
 
         logits = outputs.logits[:, self.hparams.prefix_length - 1: -1]
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)

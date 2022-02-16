@@ -285,11 +285,11 @@ def demo_generate_captions(
 
     with torch.no_grad():
         if use_all_vit_features:
-            outputs = model.vision_model(**clip_inputs).last_hidden_state
-            outputs = model.vision_model.post_layernorm(outputs)
-            outputs = model.visual_projection(outputs)
+            outputs = clip_model.vision_model(**clip_inputs).last_hidden_state
+            outputs = clip_model.vision_model.post_layernorm(outputs)
+            outputs = clip_model.visual_projection(outputs)
         else:
-            outputs = model.get_image_features(**clip_inputs)
+            outputs = clip_model.get_image_features(**clip_inputs)
         
         prefix_embed = model.clip_project(outputs)   #.reshape(-1, model.prefix_length, model.lm_embedding_size)
     
