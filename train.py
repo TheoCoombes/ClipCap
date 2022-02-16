@@ -121,6 +121,10 @@ def train(
         raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
     
     if prefix_only:
+        language_model = language_model.eval()
+        for param in language_model.parameters():
+            param.requires_grad = False 
+
         model = CLIPCaptionPrefixOnly(language_model, **model_kwargs)
         print("Train only Prefix.")
     else:
