@@ -92,7 +92,7 @@ class CLIPCaptionModel(pl.LightningModule):
 
         # Fix for custom dataloader.
         tokens = tokens.squeeze()
-        prefix = prefix.squeeze()[:, 1:]
+        prefix = prefix.squeeze()[:, 0]
 
         mask = tokens.ge(0)  # mask is zero where we out of sequence
         tokens[~mask] = 0
