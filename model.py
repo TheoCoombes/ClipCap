@@ -90,7 +90,7 @@ class CLIPCaptionModel(pl.LightningModule):
 
         tokens, prefix = batch
 
-        print(tokens[0][:5])
+        print(tokens[0][0])
 
         # Fix for custom dataloader.
         tokens = tokens.squeeze()
