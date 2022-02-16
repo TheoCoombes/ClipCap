@@ -281,7 +281,7 @@ def demo_generate_captions(
     **generation_kwargs
 ) -> Tuple[List[str], torch.Tensor]:
 
-    clip_inputs = clip_preproc(images=image, return_tensors="pt")
+    clip_inputs = clip_preproc(images=image, return_tensors="pt").to(device)
 
     with torch.no_grad():
         if use_all_vit_features:
