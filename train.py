@@ -115,6 +115,9 @@ def train(
     else:
         model = CLIPCaptionModel(**model_kwargs)
         print("Train both Prefix and Language Model.")
+    
+    # TODO better workaround for model size mismatch
+    model.init_models()
 
     # Easier to use GPU args. `-1` = use all, `0` = use gpu 0, `0,1` = use gpus 1 and 2 etc.
     if isinstance(gpu_devices, int) and gpu_devices != -1:
