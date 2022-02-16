@@ -38,11 +38,6 @@ class CLIPCaptionModel(pl.LightningModule):
                 num_heads=self.hparams.num_attention_heads,
                 num_layers=self.hparams.num_layers
             )
-        
-
-    def configure_sharded_model(self):
-        """ [deepspeed] Shards the models on initialization to prevent OOM errors. """
-        return self.init_models()
 
     def forward(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None,
                 labels: Optional[torch.Tensor] = None):
@@ -124,11 +119,3 @@ class CLIPCaptionPrefixOnly(CLIPCaptionModel):
         super().train(mode)
         self.language_model.eval()
         return self
-    
-    def init_models(self):
-        super().init_models()
-
-        self.language_model = self.language_model.eval()
-
-        for param in self.language_model.parameters():
-            param.requires_grad = False
