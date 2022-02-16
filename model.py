@@ -1,6 +1,6 @@
 from transformers import get_linear_schedule_with_warmup
+from typing import Optional, Union, Tuple
 from torch.nn import functional as nnf
-from typing import Optional, Tuple
 import pytorch_lightning as pl
 import torch
 
@@ -9,30 +9,13 @@ from lms import GPT2, GPTJ, T0
 
 
 class CLIPCaptionModel(pl.LightningModule):
-    def __init__(self, **kwargs):
+    def __init__(self, language_model: Union[GPT2, GPTJ, T0], **kwargs):
         super().__init__()
 
         # Save hparams (see `train.py` for arguments).
-        self.save_hyperparameters()
-        
-        # Deepspeed will load the models using configure_sharded_model().
-        # if not self.hparams.use_deepspeed: TODO: attempt fix?
-        self.init_models()
+        self.save_hyperparameters(ignore=["language_model"])
 
-    def init_models(self):
-        """ Loads the language model and the mapping layers. """
-
-        # load language model.
-        if self.hparams.language_model_type == "gpt2":
-            self.language_model = GPT2.create(self.hparams.language_model_variant)
-        elif self.hparams.language_model_type in ("gptj", "gpt-j"):
-            self.language_model = GPTJ.create(self.hparams.language_model_variant)
-        elif self.hparams.language_model_type in ("t0", "t5"):
-            self.language_model = T0.create(self.hparams.language_model_variant)
-        else:
-            raise ValueError(f"invalid language model type '{self.hparams.language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
-
-        # Get the size of the LM's embeddings.
+        self.language_model = language_model
         self.lm_embedding_size = self.language_model.get_embedding_size()
 
         if self.hparams.use_all_vit_features:
@@ -55,6 +38,7 @@ class CLIPCaptionModel(pl.LightningModule):
                 num_heads=self.hparams.num_attention_heads,
                 num_layers=self.hparams.num_layers
             )
+        
 
     def configure_sharded_model(self):
         """ [deepspeed] Shards the models on initialization to prevent OOM errors. """

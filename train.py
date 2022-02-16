@@ -1,12 +1,14 @@
-import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from typing import Optional
 from pathlib import Path
+import torch
 import fire
 
-from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
 from dataset import TokenPrefixDataset, MultiplePrefixDataset
+from model import CLIPCaptionModel, CLIPCaptionPrefixOnly
+from lms import GPT2, GPTJ, T0
+
 
 class CheckpointSaver(pl.Callback):
     def __init__(self, output_path: Path, filename_prefix: str, save_every_n_epochs: int = 1,
@@ -108,16 +110,22 @@ def train(
         "use_deepspeed": use_deepspeed,
         "optimizer_lr": optimizer_lr
     }
-
+    
+    if language_model_type == "gpt2":
+        language_model = GPT2.create(language_model_variant)
+    elif language_model_type in ("gptj", "gpt-j"):
+        language_model = GPTJ.create(language_model_variant)
+    elif language_model_type in ("t0", "t5"):
+        language_model = T0.create(language_model_variant)
+    else:
+        raise ValueError(f"invalid language model type '{language_model_type}' (expected 'gpt-j' / 'gpt2' / 't0' / 't5')")
+    
     if prefix_only:
-        model = CLIPCaptionPrefixOnly(**model_kwargs)
+        model = CLIPCaptionPrefixOnly(language_model, **model_kwargs)
         print("Train only Prefix.")
     else:
-        model = CLIPCaptionModel(**model_kwargs)
+        model = CLIPCaptionModel(language_model, **model_kwargs)
         print("Train both Prefix and Language Model.")
-    
-    # TODO better workaround for model size mismatch
-    model.init_models()
 
     # Easier to use GPU args. `-1` = use all, `0` = use gpu 0, `0,1` = use gpus 1 and 2 etc.
     if isinstance(gpu_devices, int) and gpu_devices != -1:
