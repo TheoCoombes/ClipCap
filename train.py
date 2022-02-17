@@ -63,6 +63,7 @@ def train(
     merge_datasets: bool = False,
     use_deepspeed: bool = False,
     use_wandb: bool = False,
+    log_every_n_steps: int = 50,
     use_16bit_precision: bool = True,
     gpu_devices: Optional[str] = "0",
     deepspeed_strategy: Optional[str] = None
@@ -163,7 +164,8 @@ def train(
         callbacks=[checkpoint_saver],
         strategy=deepspeed_strategy,
         precision=(16 if use_16bit_precision else 32),
-        logger=logger
+        logger=logger,
+        log_every_n_steps=log_every_n_steps
     )
 
     # Run training process.
