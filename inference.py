@@ -283,7 +283,7 @@ def demo_generate_captions(
 
     with torch.no_grad():
         inputs = clip_preproc(images=image, return_tensors="pt").to(device)
-        prefix = model(**inputs).last_hidden_state[:, 1:]
+        prefix = clip_model(**inputs).last_hidden_state[:, 1:]
         prefix_embed = model.clip_project(prefix)   #.reshape(-1, model.prefix_length, model.lm_embedding_size)
     
     if text_prefix is not None:
