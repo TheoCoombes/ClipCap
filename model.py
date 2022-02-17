@@ -104,8 +104,7 @@ class CLIPCaptionModel(pl.LightningModule):
 
         self.log_dict({
             "train/loss": loss,
-            "train/step": batch_idx,
-            "train/epoch": self.current_epoch
+            "train/step": (self.current_epoch * self.hparams.scheduler_warmup_steps) + (batch_idx + 1),
         })
         
         return loss

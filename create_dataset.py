@@ -274,7 +274,6 @@ def preprocess_dataset(
     wds_image_key: Optional[str] = None,
     wds_caption_key: Optional[str] = None,
     wds_caption_in_metadata: bool = False,
-    wds_vqa_question_key: Optional[str] = None,
     clip_model: str = "ViT-B/32",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
@@ -325,7 +324,6 @@ def preprocess_dataset(
             image_key=wds_image_key,
             caption_key=wds_caption_key,
             caption_in_metadata=wds_caption_in_metadata,
-            wds_vqa_question_key=wds_vqa_question_key,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length
