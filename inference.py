@@ -280,7 +280,6 @@ def demo_generate_captions(
     device: str = "cuda:0",
     **generation_kwargs
 ) -> Tuple[List[str], torch.Tensor]:
-    image = clip_preproc(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
         inputs = clip_preproc(images=image, return_tensors="pt").to(device)
