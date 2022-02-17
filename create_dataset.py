@@ -326,7 +326,13 @@ def preprocess_dataset(
     for items in data:
         with torch.no_grad():
             pixel_values = items["image_tensor"].to(device)
-            outputs = model(pixel_values=pixel_values).last_hidden_state
+            outputs = model(pixel_values=pixel_values)
+
+            if use_all_vit_features:
+                outputs = outputs.last_hidden_state
+            else:
+                outputs = outputs.pooled_output
+
             image_embs = outputs.cpu().numpy()
 
         tokens = items["tokens"]
