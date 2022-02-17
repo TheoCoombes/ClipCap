@@ -148,7 +148,6 @@ def train(
     if use_wandb:
         from pytorch_lightning.loggers import WandbLogger
         logger = WandbLogger(project="CLIP-Image-Captioning")
-        logger.watch(model)
     else:
         logger = None
     
