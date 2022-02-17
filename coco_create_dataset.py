@@ -409,7 +409,7 @@ def preprocess_dataset(
     wds_caption_key: Optional[str] = None,
     wds_caption_in_metadata: bool = False,
     wds_vqa_question_key: Optional[str] = None,
-    clip_model: str = "ViT-B/32",
+    vit_model: str = "ViT-B/32",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
     max_token_length: int = 128,
