@@ -83,7 +83,7 @@ class CocoImageDataset(Dataset):
         image_path = self.image_folder_path / image_entry.file_name
 
         try:
-            image_tensor = self.image_transform(Image.open(image_path))
+            image_tensor = self.image_transform(images=Image.open(image_path), return_tensors="pt")["pixel_values"].squeeze(0)
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
