@@ -77,10 +77,10 @@ def train(
         data_dirs = data_dir.split(",")
 
         if len(data_dirs) < 2:
-            raise ValueError((
+            raise ValueError(
                 "--merge_datasets was enabled, but less than 2 directories were specified.\n"
                 "You can specify more than one data directory by comma seperating the --data_dir input."
-            ))
+            )
         
         datasets = []
         for dir in data_dirs:
