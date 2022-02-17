@@ -3,10 +3,10 @@ from typing import Optional, Union, Tuple
 from torch.nn import functional as nnf
 import pytorch_lightning as pl
 import torch
+import math
 
 from layers import TransformerMapper, TransformerMapperAllFeatures
 from lms import GPT2, GPTJ, T0
-
 
 class CLIPCaptionModel(pl.LightningModule):
     def __init__(self, language_model: Union[GPT2, GPTJ, T0], **kwargs):
@@ -58,6 +58,18 @@ class CLIPCaptionModel(pl.LightningModule):
 
         return out
     
+    def on_after_backward(self):
+        """ Callback to calculate and log grad_norm. """
+
+        sqsum = 0.0
+
+        with torch.no_grad():  
+            for param in self.parameters():
+                sqsum += (param.grad ** 2).sum().item()
+
+        grad_norm = math.sqrt(sqsum)
+        self.log("train/grad_norm", grad_norm)
+    
     def configure_optimizers(self):
         """ Returns a dict containing the model's optimizer and loss rate scheduler. """
 
@@ -103,8 +115,8 @@ class CLIPCaptionModel(pl.LightningModule):
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
 
         self.log_dict({
-            "loss": loss.float(),
-            "step": (self.current_epoch * self.hparams.scheduler_warmup_steps) + batch_idx,
+            "train/loss": loss.float(),
+            "train/current_epoch": self.current_epoch,
         })
         
         return loss
