@@ -458,7 +458,7 @@ def preprocess_dataset(
         num_workers=num_prepro_workers,
         pin_memory=True,
         prefetch_factor=2,
-        collate_fn=collate_fn if input_format == "files" else None,
+        collate_fn=collate_fn if input_format in ("files", "coco_json") else None,
     )
     output_sink = OutputSink(output_folder, write_batch_size)
 
