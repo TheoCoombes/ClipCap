@@ -80,7 +80,7 @@ class FileFolderDataset(Dataset):
 
         try:
             image_file = self.image_files[key]
-            image_tensor = self.image_transform(images=Image.open(image_file), return_tensors="pt")["pixel_values"]
+            image_tensor = self.image_transform(images=Image.open(image_file), return_tensors="pt")["pixel_values"].squeeze(0)
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image {image_file}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -151,7 +151,7 @@ def create_webdataset(
 
         image_data = item[image_key]
         image = Image.open(io.BytesIO(image_data))
-        image_tensor = image_transform(images=image, return_tensors="pt")["pixel_values"]
+        image_tensor = image_transform(images=image, return_tensors="pt")["pixel_values"].squeeze(0)
         output["image_tensor"] = image_tensor
 
         if not caption_in_metadata:
