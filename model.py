@@ -103,8 +103,8 @@ class CLIPCaptionModel(pl.LightningModule):
         loss = nnf.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
 
         self.log_dict({
-            "train/loss": loss,
-            "train/step": (self.current_epoch * self.hparams.scheduler_warmup_steps) + (batch_idx + 1),
+            "loss": loss.float(),
+            "step": (self.current_epoch * self.hparams.scheduler_warmup_steps) + batch_idx,
         })
         
         return loss
