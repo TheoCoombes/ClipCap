@@ -1,5 +1,5 @@
 """ A modified version of clip_inference.py from rom1504/clip-retrieval """
-
+from dataclasses import dataclass
 from torch.utils.data.dataloader import default_collate
 from transformers import ViTFeatureExtractor, ViTModel
 from torch.utils.data import DataLoader, Dataset
@@ -15,6 +15,141 @@ import json
 import tqdm
 import fire
 import io
+
+
+@dataclass
+class CocoJsonImageEntry:
+    id: str
+    file_name: str
+    url: str
+
+
+@dataclass
+class CocoJsonCaptionEntry:
+    caption: str
+    image: CocoJsonImageEntry
+
+
+class CocoJsonDataset(Dataset):
+    def __init__(self, annotation_json_path):
+        super().__init__()
+
+        with open(annotation_json_path, "r") as f:
+            j = json.load(f)
+
+        images = j["images"]
+        image_by_id = dict()
+        for img in images:
+            image_by_id[img['id']] = CocoJsonImageEntry(id=img['id'], file_name=img['file_name'], url=img['coco_url'])
+        self.image_by_id = image_by_id
+        self.annotations = j["annotations"]
+        print(f'total annotations: {len(self.annotations)}; total images: {len(image_by_id)};')
+
+    def get_captions_by_image_id(self):
+        captions = {}
+        for entry in self:
+            if entry.image.id in captions:
+                captions[entry.image.id].append(entry.caption)
+            else:
+                captions[entry.image.id] = [entry.caption]
+        return captions
+
+    def __len__(self):
+        return len(self.annotations)
+
+    def __getitem__(self, index):
+        a = self.annotations[index]
+
+        caption = a['caption']
+        image_id = a['image_id']
+        image = self.image_by_id[image_id]
+
+        return CocoJsonCaptionEntry(caption=caption, image=image)
+
+
+class CocoImageDataset(Dataset):
+    def __init__(self, annotation_json_path: str, image_folder_path: str, image_transform):
+        super().__init__()
+        self.annotations = CocoJsonDataset(annotation_json_path)
+        self.keys = list(self.annotations.image_by_id.keys())
+        self.image_folder_path = Path(image_folder_path)
+        self.image_transform = image_transform
+
+    def __len__(self):
+        return len(self.keys)
+
+    def __getitem__(self, index):
+        image_entry = self.annotations.image_by_id[self.keys[index]]
+        image_path = self.image_folder_path / image_entry.file_name
+
+        try:
+            image_tensor = self.image_transform(images=Image.open(image_path), return_tensors="pt")["pixel_values"].squeeze(0)
+        except (UnidentifiedImageError, OSError):
+            print(f"Failed to load image '{image_path}'. Skipping.")
+            return None  # return None to be filtered in the batch collate_fn
+
+        return {
+            "image_tensor": image_tensor,
+            "image_entry": image_entry
+        }
+
+
+class CocoCaptionDataset(Dataset):
+    def __init__(self, annotation_json_path: str, image_folder_path: str, tokenizer, image_transform, max_token_length: int = 128):
+        super().__init__()
+        self.annotations = CocoJsonDataset(annotation_json_path)
+        self.image_folder_path = Path(image_folder_path)
+        self.image_transform = image_transform
+        self.tokenizer = tokenizer
+        self.max_token_length = max_token_length
+
+    def __len__(self):
+        return len(self.annotations)
+
+    def __getitem__(self, index):
+        entry = self.annotations[index]
+
+        caption = entry.caption
+        image_path = self.image_folder_path / entry.image.file_name
+
+        try:
+            image_tensor = self.image_transform(images=Image.open(image_path), return_tensors="pt")["pixel_values"].squeeze(0)
+        except (UnidentifiedImageError, OSError, ValueError):
+            print(f"Failed to load image '{image_path}'. Skipping.")
+            return None  # return None to be filtered in the batch collate_fn
+
+        tokens = torch.tensor(
+            self.tokenizer.encode_text(caption),
+            dtype=torch.int64
+        )
+
+        padding = self.max_token_length - tokens.shape[0]
+        if padding > 0:
+            tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
+        elif padding < 0:
+            tokens = tokens[:self.max_token_length]
+        
+        return {
+            "image_tensor": image_tensor,
+            "tokens": tokens.numpy(),
+            "image_id": entry.image.id
+        }
+
+    @staticmethod
+    def create_tokenizer(tokenizer_model_type: str = "gpt2", tokenizer_model_variant: str = "gpt2-xl"):
+        if tokenizer_model_type == "gpt2":
+            from lms import GPT2_Tokenizer
+            tokenizer = GPT2_Tokenizer.create(tokenizer_model_variant)
+        elif tokenizer_model_type in ("gptj", "gpt-j"):
+            from lms import GPTJ_Tokenizer
+            tokenizer = GPTJ_Tokenizer.create(tokenizer_model_variant)
+        elif tokenizer_model_type in ("t5", "t0"):
+            from lms import T0_Tokenizer
+            tokenizer = T0_Tokenizer.create(tokenizer_model_variant)
+        else:
+            raise ValueError(f"invalid tokenizer model type: '{tokenizer_model_type}' (expected gpt2/gpt-j/t0/t5)")
+        return tokenizer
+
 
 class FileFolderDataset(Dataset):
 
@@ -273,12 +408,14 @@ def preprocess_dataset(
     wds_image_key: Optional[str] = None,
     wds_caption_key: Optional[str] = None,
     wds_caption_in_metadata: bool = False,
+    wds_vqa_question_key: Optional[str] = None,
     vit_model: str = "ViT-B/32",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
     max_token_length: int = 128,
     use_all_vit_features: bool = True,
-    device: str = "cuda:0"
+    device: str = "cuda:0",
+    image_folder_path: str = None
 ):
 
     model = ViTModel.from_pretrained(vit_model).eval().to(device)
@@ -299,10 +436,14 @@ def preprocess_dataset(
             image_key=wds_image_key,
             caption_key=wds_caption_key,
             caption_in_metadata=wds_caption_in_metadata,
+            wds_vqa_question_key=wds_vqa_question_key,
             tokenizer_model_type=tokenizer_model_type,
             tokenizer_model_variant=tokenizer_model_variant,
             max_token_length=max_token_length
         )
+    elif input_format == "coco_json":
+        tokenizer = CocoCaptionDataset.create_tokenizer(tokenizer_model_type=tokenizer_model_type, tokenizer_model_variant=tokenizer_model_variant)
+        dataset = CocoCaptionDataset(annotation_json_path=input_dataset, image_folder_path=image_folder_path, image_transform=preprocess, tokenizer=tokenizer, max_token_length=max_token_length)
     else:
         raise Exception(f"No such input format {input_format}")
 
@@ -317,7 +458,7 @@ def preprocess_dataset(
         num_workers=num_prepro_workers,
         pin_memory=True,
         prefetch_factor=2,
-        collate_fn=collate_fn if input_format == "files" else None,
+        collate_fn=collate_fn if input_format in ("files", "coco_json") else None,
     )
     output_sink = OutputSink(output_folder, write_batch_size)
 
@@ -335,9 +476,9 @@ def preprocess_dataset(
 
             image_embs = outputs.cpu().numpy()
 
-        tokens = items["tokens"]
+            tokens = items["tokens"]
 
-        output_sink.add(image_embs, tokens)
+            output_sink.add(image_embs, tokens)
 
         bar.update(batch_size)
         c += batch_size

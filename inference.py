@@ -53,6 +53,17 @@ def repetition_penalty_apply(logits, tokens, penalty):
     logits.scatter_(-1, tokens, tok_logits)
     return logits
 
+def sentence_length_penalty_apply(logits: torch.Tensor, tokens: torch.Tensor, stop_token: int,
+                                  current_length: int, desired_length: int, length_factor: float) -> torch.Tensor:
+    penalty = (current_length / desired_length) * length_factor
+
+    tok_logits = torch.gather(logits, -1, tokens)
+    tok_logits = torch.where(tok_logits == stop_token, tok_logits * penalty, tok_logits)
+
+    logits.scatter_(-1, tokens, tok_logits)
+    
+    return logits
+
 def generate_beam(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2_Tokenizer,
@@ -212,6 +223,8 @@ def generate_no_beam(
     temperature: float = 1.0,
     stop_token: str = '.',
     repetition_penalty: float = 1.2,
+    desired_sentence_length: int = 50,
+    sentence_length_factor: float = 1.0,
 ):
 
     stop_token = tokenizer.encode_text(stop_token)[0]
@@ -245,6 +258,14 @@ def generate_no_beam(
                 # Apply temperature and filter
                 logits = logits / (temperature if temperature > 0 else 1.0)
                 logits = top_k_top_p_filtering(logits, top_p=top_p, top_k=0.0)
+
+                # Apply sentence length penalty.
+                if tokens is not None:
+                    tokens1 = tokens[0, :] # assuming batch size of 1
+                    logits = sentence_length_penalty_apply(
+                        logits, tokens1, stop_token, tokens.shape[1],
+                        desired_sentence_length, sentence_length_factor
+                    )
 
                 # Get the next token and its embedding
                 probabilities = nnf.softmax(logits, dim=-1)

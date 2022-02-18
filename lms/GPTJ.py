@@ -1,5 +1,5 @@
 from transformers import GPTJForCausalLM, GPT2Tokenizer
-from typing import Optional
+from typing import Optional, List
 import torch
 
 class GPTJ(GPTJForCausalLM):
@@ -23,11 +23,11 @@ class GPTJ_Tokenizer(GPT2Tokenizer):
     def create(cls, model_variant: str = "EleutherAI/gpt-j-6B", **huggingface_kwargs):
         return cls.from_pretrained(model_variant, **huggingface_kwargs)
     
-    def encode_text(self, text: str, max_token_length: Optional[int] = None) -> torch.Tensor:
+    def encode_text(self, text: str, max_token_length: Optional[int] = None) -> List[int]:
         tokens = self.encode(text)
         if max_token_length is not None:
             tokens = tokens[:max_token_length]
         return tokens
     
-    def decode_tokens(self, tokens: torch.Tensor) -> str:
+    def decode_tokens(self, tokens: List[int]) -> str:
         return self.decode(tokens)
