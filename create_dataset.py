@@ -488,7 +488,9 @@ def preprocess_dataset(
     bar = tqdm.tqdm()
     for items in data:
         with torch.no_grad():
-            image_embs = model(items["image_tensor"]).cpu()
+            image_embs = model(
+                items["image_tensor"].to(device)
+            ).cpu()
             
             if not use_all_vit_features:
                 image_embs = image_embs[:, 0]
