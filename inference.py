@@ -1,11 +1,14 @@
-from transformers import ViTFeatureExtractor, ViTModel
 from torchvision.transforms import Compose
+from clip.model import VisionTransformer
 from typing import Tuple, List, Optional
 import torch.nn.functional as nnf
+from clip.model import CLIP
 from typing import Union
 import skimage.io as io
 from PIL import Image
 import numpy as np
+import clip
+
 import torch
 import fire
 
@@ -292,8 +295,8 @@ def generate_no_beam(
 def demo_generate_captions(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2_Tokenizer,
-    clip_model: ViTModel,
-    clip_preproc: ViTFeatureExtractor,
+    clip_model: CLIP,
+    clip_preproc: Compose,
     image: Image.Image,
     number_to_generate: int = 1,
     text_prefix: Optional[str] = None,
@@ -301,10 +304,11 @@ def demo_generate_captions(
     device: str = "cuda:0",
     **generation_kwargs
 ) -> Tuple[List[str], torch.Tensor]:
+    
+    image = clip_preproc(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        inputs = clip_preproc(images=image, return_tensors="pt").to(device)
-        prefix = clip_model(**inputs).last_hidden_state[:, 1:]
+        prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
         prefix_embed = model.clip_project(prefix)   #.reshape(-1, model.prefix_length, model.lm_embedding_size)
     
     if text_prefix is not None:
@@ -403,7 +407,7 @@ def _shutterstock_demo(
     use_beam_search: bool = True,
     prefix_only: bool = False,
     out_filename_prefix: str = "demo_inference",
-    vit_model: str = "ViT-B/32",
+    clip_model: str = "ViT-B/32",
     language_model_type: str = "gpt2",
     language_model_variant: str = "gpt2-xl",
     hf_cache_dir: Optional[str] = None,
@@ -412,8 +416,32 @@ def _shutterstock_demo(
     use_all_vit_features: bool = True,
     **model_kwargs
 ):
-    clip_model = ViTModel.from_pretrained(vit_model).eval().to(device)
-    preprocess = ViTFeatureExtractor.from_pretrained(vit_model)
+    clip_model, preprocess = clip.load(clip_model, device=device, jit=False)
+
+    if use_all_vit_features:
+        def vit_forward_patch(self, x: torch.Tensor):
+            x = self.conv1(x)  # shape = [*, width, grid, grid]
+            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
+            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+            x = x + self.positional_embedding.to(x.dtype)
+            x = self.ln_pre(x)
+
+            x = x.permute(1, 0, 2)  # NLD -> LND
+            x = self.transformer(x)
+            x = x.permute(1, 0, 2)  # LND -> NLD
+
+            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
+            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
+
+            #x = self.ln_post(x[:, 0, :])
+
+            if self.proj is not None:
+                x = x @ self.proj
+
+            return x
+
+        clip_model.visual.forward = vit_forward_patch.__get__(clip_model.visual, VisionTransformer)
 
     if language_model_type == "gpt2":
         language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)
@@ -463,7 +491,7 @@ def _shutterstock_demo(
         with open(metadata_file, "r") as f:
             metadata = json.load(f)
 
-        captions, _ = demo_generate_captions(
+        captions, image_features = demo_generate_captions(
             model, tokenizer, clip_model, preprocess, pil_image,
             use_beam_search=use_beam_search, device=device,
             number_to_generate=number_to_generate, text_prefix=text_prefix
@@ -475,13 +503,13 @@ def _shutterstock_demo(
         url = metadata["src"]
         original_caption = metadata["alt"]
 
-        #text_inputs = clip.tokenize([original_caption, *captions], truncate=True).to(device)
+        text_inputs = clip.tokenize([original_caption, *captions], truncate=True).to(device)
 
-        #with torch.no_grad():
-        #    text_features = clip_model.encode_text(text_inputs)
+        with torch.no_grad():
+            text_features = clip_model.encode_text(text_inputs)
 
-        #image_features /= image_features.norm(dim=-1, keepdim=True)
-        #text_features /= text_features.norm(dim=-1, keepdim=True)
+        image_features /= image_features.norm(dim=-1, keepdim=True)
+        text_features /= text_features.norm(dim=-1, keepdim=True)
 
         #similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
         #similarities = similarities.tolist()

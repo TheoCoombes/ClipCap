@@ -1,16 +1,17 @@
 """ A modified version of clip_inference.py from rom1504/clip-retrieval """
 from dataclasses import dataclass
 from torch.utils.data.dataloader import default_collate
-from transformers import ViTFeatureExtractor, ViTModel
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image, UnidentifiedImageError
-from typing import Tuple, Optional
+from clip.model import VisionTransformer
+from typing import Optional
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
 import numpy as np
 import fsspec
 import torch
+import clip
 import json
 import tqdm
 import fire
@@ -31,6 +32,11 @@ class CocoJsonCaptionEntry:
 
 
 class CocoJsonDataset(Dataset):
+    """
+    Non-standard dataset providing CocoJsonCaptionEntry objects. It is not used directly but aggregated by
+    other Dataset classes (CocoImageDataset, CocoCaptionDataset) to access COCO captions read from the COCO
+    json annotation files.
+    """
     def __init__(self, annotation_json_path):
         super().__init__()
 
@@ -68,6 +74,9 @@ class CocoJsonDataset(Dataset):
 
 
 class CocoImageDataset(Dataset):
+    """
+    Dataset returning image tensors together with image entry objects. Mainly used for evaluating the model.  
+    """
     def __init__(self, annotation_json_path: str, image_folder_path: str, image_transform):
         super().__init__()
         self.annotations = CocoJsonDataset(annotation_json_path)
@@ -83,7 +92,7 @@ class CocoImageDataset(Dataset):
         image_path = self.image_folder_path / image_entry.file_name
 
         try:
-            image_tensor = self.image_transform(images=Image.open(image_path), return_tensors="pt")["pixel_values"].squeeze(0)
+            image_tensor = self.image_transform(Image.open(image_path))
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -113,8 +122,8 @@ class CocoCaptionDataset(Dataset):
         image_path = self.image_folder_path / entry.image.file_name
 
         try:
-            image_tensor = self.image_transform(images=Image.open(image_path), return_tensors="pt")["pixel_values"].squeeze(0)
-        except (UnidentifiedImageError, OSError, ValueError):
+            image_tensor = self.image_transform(Image.open(image_path))
+        except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
@@ -215,7 +224,7 @@ class FileFolderDataset(Dataset):
 
         try:
             image_file = self.image_files[key]
-            image_tensor = self.image_transform(images=Image.open(image_file), return_tensors="pt")["pixel_values"].squeeze(0)
+            image_tensor = self.image_transform(Image.open(image_file))
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image {image_file}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -286,7 +295,7 @@ def create_webdataset(
 
         image_data = item[image_key]
         image = Image.open(io.BytesIO(image_data))
-        image_tensor = image_transform(images=image, return_tensors="pt")["pixel_values"].squeeze(0)
+        image_tensor = image_transform(image)
         output["image_tensor"] = image_tensor
 
         if not caption_in_metadata:
@@ -409,7 +418,7 @@ def preprocess_dataset(
     wds_caption_key: Optional[str] = None,
     wds_caption_in_metadata: bool = False,
     wds_vqa_question_key: Optional[str] = None,
-    vit_model: str = "ViT-B/32",
+    clip_model: str = "ViT-B/32",
     tokenizer_model_type: str = "gpt2",
     tokenizer_model_variant: str = "gpt2-xl",
     max_token_length: int = 128,
@@ -418,8 +427,32 @@ def preprocess_dataset(
     image_folder_path: str = None
 ):
 
-    model = ViTModel.from_pretrained(vit_model).eval().to(device)
-    preprocess = ViTFeatureExtractor.from_pretrained(vit_model)
+    model, preprocess = clip.load(clip_model, device=device, jit=False)
+
+    if use_all_vit_features:
+        def vit_forward_patch(self, x: torch.Tensor):
+            x = self.conv1(x)  # shape = [*, width, grid, grid]
+            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
+            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+            x = x + self.positional_embedding.to(x.dtype)
+            x = self.ln_pre(x)
+
+            x = x.permute(1, 0, 2)  # NLD -> LND
+            x = self.transformer(x)
+            x = x.permute(1, 0, 2)  # LND -> NLD
+
+            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
+            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
+
+            #x = self.ln_post(x[:, 0, :])
+
+            if self.proj is not None:
+                x = x @ self.proj
+
+            return x
+
+        model.visual.forward = vit_forward_patch.__get__(model.visual, VisionTransformer)
 
     if input_format == "files":
         dataset = FileFolderDataset(
@@ -466,15 +499,9 @@ def preprocess_dataset(
     bar = tqdm.tqdm()
     for items in data:
         with torch.no_grad():
-            pixel_values = items["image_tensor"].to(device)
-            outputs = model(pixel_values=pixel_values)
-
-            if use_all_vit_features:
-                outputs = outputs.last_hidden_state
-            else:
-                outputs = outputs.pooled_output
-
-            image_embs = outputs.cpu().numpy()
+            image_embs = model.encode_image(
+                items["image_tensor"].to(device)
+            ).cpu().numpy()
 
             tokens = items["tokens"]
 
