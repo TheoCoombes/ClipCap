@@ -4,6 +4,7 @@ from torch.utils.data.dataloader import default_collate
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image, UnidentifiedImageError
 #from clip.model import VisionTransformer
+from torchvision import transforms
 from typing import Optional
 from pathlib import Path
 from io import BytesIO
@@ -17,6 +18,8 @@ import tqdm
 import fire
 import io
 
+from torchvision import transforms
+from torchvision.transforms.functional import InterpolationMode
 from blip_vit import VisionTransformer, create_vit
 
 @dataclass
@@ -93,7 +96,7 @@ class CocoImageDataset(Dataset):
         image_path = self.image_folder_path / image_entry.file_name
 
         try:
-            image_tensor = self.image_transform(Image.open(image_path))
+            image_tensor = self.image_transform(Image.open(image_path).convert('RGB'))
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -123,7 +126,7 @@ class CocoCaptionDataset(Dataset):
         image_path = self.image_folder_path / entry.image.file_name
 
         try:
-            image_tensor = self.image_transform(Image.open(image_path))
+            image_tensor = self.image_transform(Image.open(image_path).convert('RGB'))
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -225,7 +228,7 @@ class FileFolderDataset(Dataset):
 
         try:
             image_file = self.image_files[key]
-            image_tensor = self.image_transform(Image.open(image_file))
+            image_tensor = self.image_transform(Image.open(image_file).convert('RGB'))
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image {image_file}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -295,7 +298,7 @@ def create_webdataset(
         output = {}
 
         image_data = item[image_key]
-        image = Image.open(io.BytesIO(image_data))
+        image = Image.open(io.BytesIO(image_data)).convert('RGB')
         image_tensor = image_transform(image)
         output["image_tensor"] = image_tensor
 
@@ -434,7 +437,11 @@ def preprocess_dataset(
     model = model.to(device)
 
     # placeholder preprocess (not needed as PIL images are inputted directly into the model)
-    preprocess = lambda x: x
+    preprocess = transforms.Compose([
+        transforms.Resize((384, 384), interpolation=InterpolationMode.BICUBIC),
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+    ]) 
 
     if input_format == "files":
         dataset = FileFolderDataset(
