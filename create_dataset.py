@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image, UnidentifiedImageError
-from clip.model import VisionTransformer
+#from clip.model import VisionTransformer
 from typing import Optional
 from pathlib import Path
 from io import BytesIO
@@ -11,12 +11,13 @@ import pandas as pd
 import numpy as np
 import fsspec
 import torch
-import clip
+#import clip
 import json
 import tqdm
 import fire
 import io
 
+from blip_vit import VisionTransformer, create_vit
 
 @dataclass
 class CocoJsonImageEntry:
@@ -427,32 +428,13 @@ def preprocess_dataset(
     image_folder_path: str = None
 ):
 
-    model, preprocess = clip.load(clip_model, device=device, jit=False)
+    model, _ = create_vit("large", 384, False, 0)
+    model.load_state_dict(torch.load("/mnt/theocoombes/CLIP-Image-Captioning-Full-ViT/blip_vit_l16.pt"))
+    model = model.eval()
+    model = model.to(device)
 
-    if use_all_vit_features:
-        def vit_forward_patch(self, x: torch.Tensor):
-            x = self.conv1(x)  # shape = [*, width, grid, grid]
-            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
-            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
-            x = x + self.positional_embedding.to(x.dtype)
-            x = self.ln_pre(x)
-
-            x = x.permute(1, 0, 2)  # NLD -> LND
-            x = self.transformer(x)
-            x = x.permute(1, 0, 2)  # LND -> NLD
-
-            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
-            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
-
-            #x = self.ln_post(x[:, 0, :])
-
-            if self.proj is not None:
-                x = x @ self.proj
-
-            return x
-
-        model.visual.forward = vit_forward_patch.__get__(model.visual, VisionTransformer)
+    # placeholder preprocess (not needed as PIL images are inputted directly into the model)
+    preprocess = lambda x: x
 
     if input_format == "files":
         dataset = FileFolderDataset(
@@ -499,9 +481,10 @@ def preprocess_dataset(
     bar = tqdm.tqdm()
     for items in data:
         with torch.no_grad():
-            image_embs = model.encode_image(
-                items["image_tensor"].to(device)
-            ).cpu().numpy()
+            image_embs = model(items["image_tensor"]).cpu().numpy()
+            
+            if not use_all_vit_features:
+                image_embs = image_embs[:, 0]
 
             tokens = items["tokens"]
 
