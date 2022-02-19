@@ -164,8 +164,7 @@ def train(
         strategy=deepspeed_strategy,
         precision=(16 if use_16bit_precision else 32),
         logger=logger,
-        log_every_n_steps=log_every_n_steps,
-        track_grad_norm=2,
+        log_every_n_steps=log_every_n_steps
     )
 
     # Run training process.

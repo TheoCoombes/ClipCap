@@ -1,13 +1,17 @@
 from torchvision.transforms import Compose
-from clip.model import VisionTransformer
+#from clip.model import VisionTransformer
 from typing import Tuple, List, Optional
 import torch.nn.functional as nnf
-from clip.model import CLIP
+#from clip.model import CLIP
 from typing import Union
 import skimage.io as io
 from PIL import Image
 import numpy as np
 import clip
+
+from blip_vit import VisionTransformer, create_vit
+from torchvision import transforms
+from torchvision.transforms.functional import InterpolationMode
 
 import torch
 import fire
@@ -295,7 +299,7 @@ def generate_no_beam(
 def demo_generate_captions(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2_Tokenizer,
-    clip_model: CLIP,
+    clip_model: VisionTransformer,
     clip_preproc: Compose,
     image: Image.Image,
     number_to_generate: int = 1,
@@ -308,7 +312,7 @@ def demo_generate_captions(
     image = clip_preproc(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        prefix = clip_model.encode_image(image).to(device, dtype=torch.float32)
+        prefix = clip_model(image).to(device, dtype=torch.float32)
         prefix_embed = model.clip_project(prefix)   #.reshape(-1, model.prefix_length, model.lm_embedding_size)
     
     if text_prefix is not None:
@@ -331,73 +335,6 @@ def demo_generate_captions(
     return generated_captions, prefix
 
 
-# def demo(
-#     checkpoint_path: str = "./train/latest.pt",
-#     prefix_length: int = 40,
-#     clip_prefix_length: int = 40,
-#     prefix_size: int = 512,
-#     mapping_type: str = "mlp",
-#     num_layers: int = 8,
-#     only_prefix: bool = False,
-#     language_model_type: str = "gpt2",
-#     language_model_variant: str = "gpt2-xl",
-#     clip_model_type: str = "ViT-B/32",
-#     load_full_model: bool = True,
-#     use_beam_search: bool = False,
-#     device: str = "cuda:0",
-#     **generation_kwargs
-# ):
-#     clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
-
-#     if language_model_type == "gpt2":
-#         language_model = GPT2.create(language_model_variant)
-#         tokenizer = GPT2_Tokenizer.create(language_model_variant)
-#     else:
-#         raise ValueError(f"invalid language model type: '{language_model_type}' (expected 'gpt2')")
-
-#     if only_prefix:
-#         if load_full_model:
-#             model = CLIPCaptionPrefixOnly.load_from_checkpoint(checkpoint_path=checkpoint_path)
-#         else:
-#             model = CLIPCaptionPrefixOnly(
-#                 language_model, prefix_length, clip_length=clip_prefix_length,
-#                 prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
-#             )
-#             model.load_state_dict(torch.load(checkpoint_path))
-#     else:
-#         if load_full_model:
-#             model = CLIPCaptionModel.load_from_checkpoint(checkpoint_path=checkpoint_path)
-#         else:
-#             model = CLIPCaptionModel(
-#                 language_model, prefix_length, clip_length=clip_prefix_length,
-#                 prefix_size=prefix_size, num_layers=num_layers, mapping_type=mapping_type
-#             )
-#             model.load_state_dict(torch.load(checkpoint_path))
-    
-#     model = model.to(device)
-#     model = model.eval()
-
-#     try:
-#         while True:
-#             print("CLIP-Image-Captioning inference demo\n")
-
-#             image_path_url = input("enter image url or path > ")
-
-#             image = io.imread(image_path_url)
-#             image = Image.fromarray(image)
-
-#             caption = demo_generate_captions(
-#                 model, tokenizer, clip_model, preprocess, image,
-#                 use_beam_search=use_beam_search, device=device, **generation_kwargs
-#             )
-
-#             print(caption)
-#             print()
-#     except KeyboardInterrupt:
-#         print("exiting...")
-#         exit(0)
-
-
 def _shutterstock_demo(
     checkpoint_path: str,
     shutterstock_path: str,
@@ -416,32 +353,16 @@ def _shutterstock_demo(
     use_all_vit_features: bool = True,
     **model_kwargs
 ):
-    clip_model, preprocess = clip.load(clip_model, device=device, jit=False)
+    model, _ = create_vit("large", 384, False, 0)
+    model.load_state_dict(torch.load("/mnt/theocoombes/CLIP-Image-Captioning-Full-ViT/blip_vit_l16.pt"))
+    model = model.eval()
+    model = model.to(device)
 
-    if use_all_vit_features:
-        def vit_forward_patch(self, x: torch.Tensor):
-            x = self.conv1(x)  # shape = [*, width, grid, grid]
-            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
-            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
-            x = x + self.positional_embedding.to(x.dtype)
-            x = self.ln_pre(x)
-
-            x = x.permute(1, 0, 2)  # NLD -> LND
-            x = self.transformer(x)
-            x = x.permute(1, 0, 2)  # LND -> NLD
-
-            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
-            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
-
-            #x = self.ln_post(x[:, 0, :])
-
-            if self.proj is not None:
-                x = x @ self.proj
-
-            return x
-
-        clip_model.visual.forward = vit_forward_patch.__get__(clip_model.visual, VisionTransformer)
+    preprocess = transforms.Compose([
+        transforms.Resize((384, 384), interpolation=InterpolationMode.BICUBIC),
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+    ]) 
 
     if language_model_type == "gpt2":
         language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)
