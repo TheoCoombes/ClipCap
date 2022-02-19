@@ -353,10 +353,10 @@ def _shutterstock_demo(
     use_all_vit_features: bool = True,
     **model_kwargs
 ):
-    model, _ = create_vit("large", 384, False, 0)
-    model.load_state_dict(torch.load("/mnt/theocoombes/CLIP-Image-Captioning-Full-ViT/blip_vit_l16.pt"))
-    model = model.eval()
-    model = model.to(device)
+    clip_model, _ = create_vit("large", 384, False, 0)
+    clip_model.load_state_dict(torch.load("/mnt/theocoombes/CLIP-Image-Captioning-Full-ViT/blip_vit_l16.pt"))
+    clip_model = clip_model.eval()
+    clip_model = clip_model.to(device)
 
     preprocess = transforms.Compose([
         transforms.Resize((384, 384), interpolation=InterpolationMode.BICUBIC),
