@@ -436,7 +436,6 @@ def preprocess_dataset(
     model = model.eval()
     model = model.to(device)
 
-    # placeholder preprocess (not needed as PIL images are inputted directly into the model)
     preprocess = transforms.Compose([
         transforms.Resize((384, 384), interpolation=InterpolationMode.BICUBIC),
         transforms.ToTensor(),
