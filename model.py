@@ -58,18 +58,6 @@ class CLIPCaptionModel(pl.LightningModule):
 
         return out
     
-    def on_after_backward(self):
-        """ Callback to calculate and log grad_norm. """
-
-        sqsum = 0.0
-
-        with torch.no_grad():  
-            for param in self.parameters():
-                sqsum += (param.grad ** 2).sum().item()
-
-        grad_norm = math.sqrt(sqsum)
-        self.log("train/grad_norm", grad_norm)
-    
     def configure_optimizers(self):
         """ Returns a dict containing the model's optimizer and loss rate scheduler. """
 
