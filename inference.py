@@ -426,11 +426,11 @@ def _shutterstock_demo(
 
         text_inputs = clip.tokenize([original_caption, *captions], truncate=True).to(device)
 
-        with torch.no_grad():
-            text_features = clip_model.encode_text(text_inputs)
+        # with torch.no_grad():
+        #     text_features = clip_model.encode_text(text_inputs)
 
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
+        # image_features /= image_features.norm(dim=-1, keepdim=True)
+        # text_features /= text_features.norm(dim=-1, keepdim=True)
 
         #similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
         #similarities = similarities.tolist()
