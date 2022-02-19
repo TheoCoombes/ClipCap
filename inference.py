@@ -451,24 +451,24 @@ def _shutterstock_demo(
         }
 
         # Collect the records we'll need for scoring
-        scoring_res[image_id] = [
-            {u'caption': original_caption}
-        ]
-        scoring_gts[image_id] = [
-            {u'caption': caption} for caption in captions
-        ]
+        # scoring_res[image_id] = [
+        #     {u'caption': original_caption}
+        # ]
+        # scoring_gts[image_id] = [
+        #     {u'caption': caption} for caption in captions
+        # ]
 
-        image_id_to_url[image_id] = url
-        image_id += 1
+        # image_id_to_url[image_id] = url
+        # image_id += 1
     
     # Calculate scores
-    scores, img_scores = scoring.generate_scores(scoring_gts, scoring_res)
-    print("Scores")
-    print(scores)
+    # scores, img_scores = scoring.generate_scores(scoring_gts, scoring_res)
+    # print("Scores")
+    # print(scores)
 
     # Integrate the scores into the results
-    for img_id in img_scores.keys():
-        sample_data[image_id_to_url[img_id]]["scores"] = img_scores[img_id]
+    # for img_id in img_scores.keys():
+    #     sample_data[image_id_to_url[img_id]]["scores"] = img_scores[img_id]
 
     # Save the results
     with open(f"{out_filename_prefix}_shutterstock.json", "w+") as f:
