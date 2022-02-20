@@ -94,8 +94,8 @@ class CocoImageDataset(Dataset):
 
         try:
             image_tensor = self.image_transform(librosa.load(image_path, duration=20, sr=44100, dtype=np.float32)[0])
-        except (UnidentifiedImageError, OSError):
-            print(f"Failed to load image '{image_path}'. Skipping.")
+        except Exception as e:
+            print(f"Failed to load image '{image_path}' - {e}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
         return {
@@ -124,8 +124,8 @@ class CocoCaptionDataset(Dataset):
 
         try:
             image_tensor = self.image_transform(librosa.load(image_path, duration=20, sr=44100, dtype=np.float32)[0])
-        except (UnidentifiedImageError, OSError):
-            print(f"Failed to load image '{image_path}'. Skipping.")
+        except Exception as e:
+            print(f"Failed to load image '{image_path}' - '{e}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
         tokens = torch.tensor(
@@ -227,8 +227,8 @@ class FileFolderDataset(Dataset):
         try:
             image_file = self.image_files[key]
             image_tensor = self.image_transform(librosa.load(image_file, duration=20, sr=44100, dtype=np.float32)[0])
-        except (UnidentifiedImageError, OSError):
-            print(f"Failed to load image {image_file}. Skipping.")
+        except Exception as e:
+            print(f"Failed to load image '{image_file}' - '{e}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
         output["audio_tensor"] = image_tensor[:, :882000]
