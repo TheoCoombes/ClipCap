@@ -10,7 +10,7 @@ import numpy as np
 #import clip
 
 from audioclip.model import AudioCLIP as AudioCLIPModel
-from audioclip.utils.transforms import ToTensor1D
+from audioclip.utils.transforms import ToTensor1D, frame_signal
 from urllib.parse import unquote
 import librosa
 
@@ -423,7 +423,7 @@ def _shutterstock_demo(
 ):
     clip_model = AudioCLIPModel(pretrained=clip_model).eval().to(device)
     preproc_transform = ToTensor1D()
-    preprocess = lambda x: preproc_transform(x.reshape(1, -1))
+    preprocess = lambda x: frame_signal(preproc_transform(x.reshape(1, -1)), 100242, int(np.floor(256 / 4)))
 
     if language_model_type == "gpt2":
         language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)

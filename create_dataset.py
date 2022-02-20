@@ -17,7 +17,7 @@ import fire
 import io
 
 from audioclip.model import AudioCLIP as AudioCLIPModel
-from audioclip.utils.transforms import ToTensor1D
+from audioclip.utils.transforms import ToTensor1D, frame_signal
 
 @dataclass
 class CocoJsonImageEntry:
@@ -97,9 +97,15 @@ class CocoImageDataset(Dataset):
         except Exception as e:
             print(f"Failed to load image '{image_path}' - {e}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
+        
+        image_tensor = frame_signal(
+            image_tensor,
+            100242,
+            int(np.floor(256 / 4))
+        )
 
         return {
-            "audio_tensor": image_tensor[:, :882000],
+            "audio_tensor": image_tensor,
             "image_entry": image_entry
         }
 
@@ -139,8 +145,11 @@ class CocoCaptionDataset(Dataset):
         elif padding < 0:
             tokens = tokens[:self.max_token_length]
         
-        # TODO force length of tensor
-        image_tensor = image_tensor[:, :882000]
+        image_tensor = frame_signal(
+            image_tensor,
+            100242,
+            int(np.floor(256 / 4))
+        )
         
         return {
             "audio_tensor": image_tensor,
@@ -231,7 +240,11 @@ class FileFolderDataset(Dataset):
             print(f"Failed to load image '{image_file}' - '{e}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
-        output["audio_tensor"] = image_tensor[:, :882000]
+        output["audio_tensor"] = frame_signal(
+            image_tensor,
+            100242,
+            int(np.floor(256 / 4))
+        )
 
         text_file = self.text_files[key]
         caption = text_file.read_text()
@@ -297,7 +310,12 @@ def create_webdataset(
 
         image_data = item[image_key]
         image_tensor = image_transform(librosa.load(image_data, duration=20, sr=44100, dtype=np.float32)[0])
-        output["audio_tensor"] = image_tensor[:, :882000]
+        
+        output["audio_tensor"] = frame_signal(
+            image_tensor,
+            100242,
+            int(np.floor(256 / 4))
+        )
 
         if not caption_in_metadata:
             text = item[caption_key]
