@@ -93,7 +93,7 @@ class CocoImageDataset(Dataset):
         image_path = self.image_folder_path / image_entry.file_name
 
         try:
-            image_tensor = self.image_transform(librosa.load(image_path, duration=15, sr=44100, dtype=np.float32)[0])
+            image_tensor = self.image_transform(librosa.load(image_path, duration=20, sr=44100, dtype=np.float32)[0])
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -123,7 +123,7 @@ class CocoCaptionDataset(Dataset):
         image_path = self.image_folder_path / entry.image.file_name
 
         try:
-            image_tensor = self.image_transform(librosa.load(image_path, duration=15, sr=44100, dtype=np.float32)[0])
+            image_tensor = self.image_transform(librosa.load(image_path, duration=20, sr=44100, dtype=np.float32)[0])
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -223,7 +223,7 @@ class FileFolderDataset(Dataset):
 
         try:
             image_file = self.image_files[key]
-            image_tensor = self.image_transform(librosa.load(image_file, duration=15, sr=44100, dtype=np.float32)[0])
+            image_tensor = self.image_transform(librosa.load(image_file, duration=20, sr=44100, dtype=np.float32)[0])
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image {image_file}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -293,7 +293,7 @@ def create_webdataset(
         output = {}
 
         image_data = item[image_key]
-        image_tensor = image_transform(librosa.load(image_data, duration=15, sr=44100, dtype=np.float32)[0])
+        image_tensor = image_transform(librosa.load(image_data, duration=20, sr=44100, dtype=np.float32)[0])
         output["audio_tensor"] = image_tensor
 
         if not caption_in_metadata:
