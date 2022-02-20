@@ -425,7 +425,7 @@ def preprocess_dataset(
     image_folder_path: str = None
 ):
 
-    model = AudioCLIPModel(pretrained=clip_model)
+    model = AudioCLIPModel(pretrained=clip_model).eval().to(device)
     preproc_transform = ToTensor1D()
     preprocess = lambda x: preproc_transform(x.reshape(1, -1))
 
