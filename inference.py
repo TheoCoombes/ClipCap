@@ -1,16 +1,18 @@
 from torchvision.transforms import Compose
-from clip.model import VisionTransformer
+#from clip.model import VisionTransformer
 from typing import Tuple, List, Optional
 import torch.nn.functional as nnf
-from clip.model import CLIP
+#from clip.model import CLIP
 from typing import Union
 import skimage.io as io
 from PIL import Image
 import numpy as np
-import clip
+#import clip
 
 from AudioCLIP.audioclip.model import AudioCLIP as AudioCLIPModel
 from AudioCLIP.audioclip.utils.transforms import ToTensor1D
+from urllib.parse import unquote
+import librosa
 
 import torch
 import fire
@@ -298,7 +300,7 @@ def generate_no_beam(
 def demo_generate_captions(
     model: Union[CLIPCaptionModel, CLIPCaptionPrefixOnly],
     tokenizer: GPT2_Tokenizer,
-    clip_model: CLIP,
+    clip_model,
     clip_preproc: Compose,
     image,
     number_to_generate: int = 1,
@@ -419,7 +421,7 @@ def _shutterstock_demo(
     use_all_vit_features: bool = True,
     **model_kwargs
 ):
-    clip_model = AudioCLIPModel(pretrained=clip_model)
+    clip_model = AudioCLIPModel(pretrained=clip_model).eval().to(device)
     preproc_transform = ToTensor1D()
     preprocess = lambda x: preproc_transform(x.reshape(1, -1))
 
@@ -463,33 +465,25 @@ def _shutterstock_demo(
     image_id = 0
     image_id_to_url = {}
 
-    for image_file in tqdm(sorted(list(samples_path.glob("*.jpg")), key=lambda x: x.name)[:total_samples], desc='inference'):
-        image = io.imread(image_file)
-        pil_image = Image.fromarray(image)
-
-        metadata_file = image_file.parent / image_file.name.replace(".jpg", ".json")
-        with open(metadata_file, "r") as f:
-            metadata = json.load(f)
+    for audio_file in tqdm(sorted(list(samples_path.glob("*.wav")), key=lambda x: x.name)[:total_samples], desc='inference'):
+        track, _ = librosa.load(audio_file, duration=15, sr=44100, dtype=np.float32)
 
         captions, image_features = demo_generate_captions(
-            model, tokenizer, clip_model, preprocess, pil_image,
+            model, tokenizer, clip_model, preprocess, track,
             use_beam_search=use_beam_search, device=device,
             number_to_generate=number_to_generate, text_prefix=text_prefix
         )
 
-        print(image_file)
+        print(audio_file)
         print(captions)
 
-        url = metadata["src"]
-        original_caption = metadata["alt"]
+        # text_inputs = clip.tokenize([original_caption, *captions], truncate=True).to(device)
 
-        text_inputs = clip.tokenize([original_caption, *captions], truncate=True).to(device)
+        # with torch.no_grad():
+        #     text_features = clip_model.encode_text(text_inputs)
 
-        with torch.no_grad():
-            text_features = clip_model.encode_text(text_inputs)
-
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
+        # image_features /= image_features.norm(dim=-1, keepdim=True)
+        # text_features /= text_features.norm(dim=-1, keepdim=True)
 
         #similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
         #similarities = similarities.tolist()
@@ -500,8 +494,8 @@ def _shutterstock_demo(
         #best_sim = max(generated_sims)
         #best_caption = captions[generated_sims.index(best_sim)]
 
-        sample_data[url] = {
-            "original_caption": original_caption,
+        sample_data[audio_file.name] = {
+            "original_caption": " ".join(unquote(audio_file.name.split("..")[0].split("sounds/")[1]).split("/")),
             #"original_sim": original_sim,
             "generated_captions": captions,
             #"generated_sim": generated_sims,
