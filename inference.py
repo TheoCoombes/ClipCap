@@ -9,8 +9,8 @@ from PIL import Image
 import numpy as np
 #import clip
 
-from AudioCLIP.audioclip.model import AudioCLIP as AudioCLIPModel
-from AudioCLIP.audioclip.utils.transforms import ToTensor1D
+from audioclip.model import AudioCLIP as AudioCLIPModel
+from audioclip.utils.transforms import ToTensor1D
 from urllib.parse import unquote
 import librosa
 
