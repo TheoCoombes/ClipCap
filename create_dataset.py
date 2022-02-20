@@ -98,11 +98,14 @@ class CocoImageDataset(Dataset):
             print(f"Failed to load image '{image_path}' - {e}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
         
-        image_tensor = frame_signal(
-            image_tensor,
-            100242,
-            int(np.floor(256 / 4))
-        )
+        MAX_SAMPLE_LENGTH = 882000
+
+        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
+            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
+        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
+            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
+            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=1)
 
         return {
             "audio_tensor": image_tensor,
@@ -145,11 +148,14 @@ class CocoCaptionDataset(Dataset):
         elif padding < 0:
             tokens = tokens[:self.max_token_length]
         
-        image_tensor = frame_signal(
-            image_tensor,
-            100242,
-            int(np.floor(256 / 4))
-        )
+        MAX_SAMPLE_LENGTH = 882000
+
+        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
+            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
+        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
+            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
+            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=1)
         
         return {
             "audio_tensor": image_tensor,
@@ -240,11 +246,16 @@ class FileFolderDataset(Dataset):
             print(f"Failed to load image '{image_file}' - '{e}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
-        output["audio_tensor"] = frame_signal(
-            image_tensor,
-            100242,
-            int(np.floor(256 / 4))
-        )
+        MAX_SAMPLE_LENGTH = 882000
+
+        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
+            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
+        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
+            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
+            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=1)
+
+        output["audio_tensor"] = image_tensor
 
         text_file = self.text_files[key]
         caption = text_file.read_text()
@@ -310,12 +321,17 @@ def create_webdataset(
 
         image_data = item[image_key]
         image_tensor = image_transform(librosa.load(image_data, duration=20, sr=44100, dtype=np.float32)[0])
-        
-        output["audio_tensor"] = frame_signal(
-            image_tensor,
-            100242,
-            int(np.floor(256 / 4))
-        )
+
+        MAX_SAMPLE_LENGTH = 882000
+
+        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
+            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
+        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
+            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
+            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=1)
+
+        output["audio_tensor"] = image_tensor
 
         if not caption_in_metadata:
             text = item[caption_key]
