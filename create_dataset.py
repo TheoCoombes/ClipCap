@@ -3,20 +3,21 @@ from dataclasses import dataclass
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image, UnidentifiedImageError
-from clip.model import VisionTransformer
 from typing import Optional
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
 import numpy as np
+import librosa
 import fsspec
 import torch
-import clip
 import json
 import tqdm
 import fire
 import io
 
+from AudioCLIP.audioclip.model import AudioCLIP as AudioCLIPModel
+from AudioCLIP.audioclip.utils.transforms import ToTensor1D
 
 @dataclass
 class CocoJsonImageEntry:
@@ -92,13 +93,13 @@ class CocoImageDataset(Dataset):
         image_path = self.image_folder_path / image_entry.file_name
 
         try:
-            image_tensor = self.image_transform(Image.open(image_path))
+            image_tensor = self.image_transform(librosa.load(image_path, duration=10, sr=44100, dtype=np.float32)[0])
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
         return {
-            "image_tensor": image_tensor,
+            "audio_tensor": image_tensor,
             "image_entry": image_entry
         }
 
@@ -122,7 +123,7 @@ class CocoCaptionDataset(Dataset):
         image_path = self.image_folder_path / entry.image.file_name
 
         try:
-            image_tensor = self.image_transform(Image.open(image_path))
+            image_tensor = self.image_transform(librosa.load(image_path, duration=10, sr=44100, dtype=np.float32)[0])
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image '{image_path}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -139,7 +140,7 @@ class CocoCaptionDataset(Dataset):
             tokens = tokens[:self.max_token_length]
         
         return {
-            "image_tensor": image_tensor,
+            "audio_tensor": image_tensor,
             "tokens": tokens.numpy(),
             "image_id": entry.image.id
         }
@@ -179,10 +180,8 @@ class FileFolderDataset(Dataset):
         text_files = {text_file.stem: text_file for text_file in text_files}
         
         image_files = [
-            *path.glob("**/*.png"),
-            *path.glob("**/*.jpg"),
-            *path.glob("**/*.jpeg"),
-            *path.glob("**/*.bmp"),
+            *path.glob("**/*.wav"),
+            *path.glob("**/*.mp3"),
         ]
         
         image_files = {image_file.stem: image_file for image_file in image_files}
@@ -224,12 +223,12 @@ class FileFolderDataset(Dataset):
 
         try:
             image_file = self.image_files[key]
-            image_tensor = self.image_transform(Image.open(image_file))
+            image_tensor = self.image_transform(librosa.load(image_file, duration=10, sr=44100, dtype=np.float32)[0])
         except (UnidentifiedImageError, OSError):
             print(f"Failed to load image {image_file}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
-        output["image_tensor"] = image_tensor
+        output["audio_tensor"] = image_tensor
 
         text_file = self.text_files[key]
         caption = text_file.read_text()
@@ -294,9 +293,8 @@ def create_webdataset(
         output = {}
 
         image_data = item[image_key]
-        image = Image.open(io.BytesIO(image_data))
-        image_tensor = image_transform(image)
-        output["image_tensor"] = image_tensor
+        image_tensor = image_transform(librosa.load(image_data, duration=10, sr=44100, dtype=np.float32)[0])
+        output["audio_tensor"] = image_tensor
 
         if not caption_in_metadata:
             text = item[caption_key]
@@ -427,32 +425,9 @@ def preprocess_dataset(
     image_folder_path: str = None
 ):
 
-    model, preprocess = clip.load(clip_model, device=device, jit=False)
-
-    if use_all_vit_features:
-        def vit_forward_patch(self, x: torch.Tensor):
-            x = self.conv1(x)  # shape = [*, width, grid, grid]
-            x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
-            x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-            x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
-            x = x + self.positional_embedding.to(x.dtype)
-            x = self.ln_pre(x)
-
-            x = x.permute(1, 0, 2)  # NLD -> LND
-            x = self.transformer(x)
-            x = x.permute(1, 0, 2)  # LND -> NLD
-
-            # this patch removes the CLS token output extraction + projection from CLIP's ViT forward method
-            # original: https://github.com/openai/CLIP/blob/40f5484c1c74edd83cb9cf687c6ab92b28d8b656/clip/model.py#L202-L236
-
-            #x = self.ln_post(x[:, 0, :])
-
-            if self.proj is not None:
-                x = x @ self.proj
-
-            return x
-
-        model.visual.forward = vit_forward_patch.__get__(model.visual, VisionTransformer)
+    model = AudioCLIPModel(pretrained=clip_model)
+    preproc_transform = ToTensor1D()
+    preprocess = lambda x: preproc_transform(x.reshape(1, -1))
 
     if input_format == "files":
         dataset = FileFolderDataset(
@@ -499,13 +474,13 @@ def preprocess_dataset(
     bar = tqdm.tqdm()
     for items in data:
         with torch.no_grad():
-            image_embs = model.encode_image(
-                items["image_tensor"].to(device)
+            audio_embs = model.encode_audio(
+                items["audio_tensor"].to(device)
             ).cpu().numpy()
 
             tokens = items["tokens"]
 
-            output_sink.add(image_embs, tokens)
+            output_sink.add(audio_embs, tokens)
 
         bar.update(batch_size)
         c += batch_size
