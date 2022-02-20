@@ -104,8 +104,8 @@ class CocoImageDataset(Dataset):
             image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
         elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
             pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=1)
+            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
 
         return {
             "audio_tensor": image_tensor,
@@ -154,8 +154,8 @@ class CocoCaptionDataset(Dataset):
             image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
         elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
             pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=1)
+            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
         
         return {
             "audio_tensor": image_tensor,
@@ -252,8 +252,8 @@ class FileFolderDataset(Dataset):
             image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
         elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
             pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=1)
+            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
 
         output["audio_tensor"] = image_tensor
 
@@ -328,8 +328,8 @@ def create_webdataset(
             image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
         elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
             pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=1)
+            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
+            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
 
         output["audio_tensor"] = image_tensor
 
