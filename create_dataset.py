@@ -17,7 +17,7 @@ import fire
 import io
 
 from audioclip.model import AudioCLIP as AudioCLIPModel
-from utils.transforms import ToTensor1D
+from audioclip.utils.transforms import ToTensor1D
 
 @dataclass
 class CocoJsonImageEntry:
