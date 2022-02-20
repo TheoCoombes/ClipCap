@@ -495,7 +495,7 @@ def _shutterstock_demo(
         #best_caption = captions[generated_sims.index(best_sim)]
 
         sample_data[audio_file.name] = {
-            "original_caption": " ".join(unquote(audio_file.name.split("..")[0].split("sounds/")[1]).split("/")),
+            "original_caption": unquote(audio_file.name.split(".")[0]),
             #"original_sim": original_sim,
             "generated_captions": captions,
             #"generated_sim": generated_sims,
