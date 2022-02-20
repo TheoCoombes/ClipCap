@@ -99,7 +99,7 @@ class CocoImageDataset(Dataset):
             return None  # return None to be filtered in the batch collate_fn
 
         return {
-            "audio_tensor": image_tensor,
+            "audio_tensor": image_tensor[:, :882000],
             "image_entry": image_entry
         }
 
@@ -138,6 +138,9 @@ class CocoCaptionDataset(Dataset):
             tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
         elif padding < 0:
             tokens = tokens[:self.max_token_length]
+        
+        # TODO force length of tensor
+        image_tensor = image_tensor[:, :882000]
         
         return {
             "audio_tensor": image_tensor,
@@ -228,7 +231,7 @@ class FileFolderDataset(Dataset):
             print(f"Failed to load image {image_file}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
 
-        output["audio_tensor"] = image_tensor
+        output["audio_tensor"] = image_tensor[:, :882000]
 
         text_file = self.text_files[key]
         caption = text_file.read_text()
@@ -294,7 +297,7 @@ def create_webdataset(
 
         image_data = item[image_key]
         image_tensor = image_transform(librosa.load(image_data, duration=20, sr=44100, dtype=np.float32)[0])
-        output["audio_tensor"] = image_tensor
+        output["audio_tensor"] = image_tensor[:, :882000]
 
         if not caption_in_metadata:
             text = item[caption_key]

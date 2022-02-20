@@ -468,7 +468,7 @@ def _shutterstock_demo(
     for audio_file in tqdm(sorted(list(samples_path.glob("*.wav")), key=lambda x: x.name)[:total_samples], desc='inference'):
         track, _ = librosa.load(audio_file, duration=20, sr=44100, dtype=np.float32)
 
-        captions, image_features = demo_generate_captions(
+        captions, _ = demo_generate_captions(
             model, tokenizer, clip_model, preprocess, track,
             use_beam_search=use_beam_search, device=device,
             number_to_generate=number_to_generate, text_prefix=text_prefix
