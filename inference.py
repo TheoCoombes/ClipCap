@@ -310,20 +310,7 @@ def demo_generate_captions(
     **generation_kwargs
 ) -> Tuple[List[str], torch.Tensor]:
     
-    image = clip_preproc(image).unsqueeze(0)
-
-    print(image.shape)
-
-    MAX_SAMPLE_LENGTH = 882000
-
-    if image.shape[-1] > MAX_SAMPLE_LENGTH:
-        image = image[:, :MAX_SAMPLE_LENGTH]
-    elif image.shape[-1] < MAX_SAMPLE_LENGTH:
-        pad = MAX_SAMPLE_LENGTH - image.shape[-1]
-        zeros = torch.zeros(*image.shape[:-1], pad, dtype=image.dtype)
-        image = torch.cat((image, zeros), dim=-1)
-    
-    image = image.to(device)
+    image = clip_preproc(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
         prefix = clip_model.encode_audio(image).to(device, dtype=torch.float32)
@@ -436,7 +423,7 @@ def _shutterstock_demo(
 ):
     clip_model = AudioCLIPModel(pretrained=clip_model).eval().to(device)
     preproc_transform = ToTensor1D()
-    preprocess = lambda x: frame_signal(preproc_transform(x.reshape(1, -1)), 100242, int(np.floor(256 / 4)))
+    preprocess = lambda x: preproc_transform(x.reshape(1, -1))
 
     if language_model_type == "gpt2":
         language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)
@@ -507,7 +494,7 @@ def _shutterstock_demo(
         #best_sim = max(generated_sims)
         #best_caption = captions[generated_sims.index(best_sim)]
 
-        sample_data[audio_file.name] = {
+        sample_data[audio_file.stem] = {
             "original_caption": unquote(audio_file.name.split(".")[0]),
             #"original_sim": original_sim,
             "generated_captions": captions,
