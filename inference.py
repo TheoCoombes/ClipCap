@@ -311,6 +311,15 @@ def demo_generate_captions(
 ) -> Tuple[List[str], torch.Tensor]:
     
     image = clip_preproc(image).unsqueeze(0).to(device)
+    
+    MAX_SAMPLE_LENGTH = 882000
+
+    if image.shape[-1] > MAX_SAMPLE_LENGTH:
+        image = image[:, :MAX_SAMPLE_LENGTH]
+    elif image.shape[-1] < MAX_SAMPLE_LENGTH:
+        pad = MAX_SAMPLE_LENGTH - image.shape[-1]
+        zeros = torch.zeros(*image.shape[:-1], pad, dtype=image.dtype)
+        image = torch.cat((image, zeros), dim=-1)
 
     with torch.no_grad():
         prefix = clip_model.encode_audio(image).to(device, dtype=torch.float32)
