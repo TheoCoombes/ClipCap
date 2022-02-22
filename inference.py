@@ -312,6 +312,8 @@ def demo_generate_captions(
     
     image = clip_preproc(image).unsqueeze(0)
 
+    print(image.shape)
+
     MAX_SAMPLE_LENGTH = 882000
 
     if image.shape[-1] > MAX_SAMPLE_LENGTH:
