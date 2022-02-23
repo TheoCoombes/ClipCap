@@ -17,7 +17,8 @@ import fire
 import io
 
 from audioclip.model import AudioCLIP as AudioCLIPModel
-from audioclip.utils.transforms import ToTensor1D, frame_signal
+from utils.audioclip_audio_splice import splice_audio
+from audioclip.utils.transforms import ToTensor1D
 
 @dataclass
 class CocoJsonImageEntry:
@@ -93,19 +94,10 @@ class CocoImageDataset(Dataset):
         image_path = self.image_folder_path / image_entry.file_name
 
         try:
-            image_tensor = self.image_transform(librosa.load(image_path, duration=20, sr=44100, dtype=np.float32)[0])
+            image_tensor = self.image_transform(librosa.load(image_path, duration=30, sr=44100, dtype=np.float32)[0])
         except Exception as e:
             print(f"Failed to load image '{image_path}' - {e}. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
-        
-        MAX_SAMPLE_LENGTH = 882000
-
-        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
-            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
-        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
-            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
 
         return {
             "audio_tensor": image_tensor,
@@ -132,7 +124,7 @@ class CocoCaptionDataset(Dataset):
         image_path = self.image_folder_path / entry.image.file_name
 
         try:
-            image_tensor = self.image_transform(librosa.load(image_path, duration=20, sr=44100, dtype=np.float32)[0])
+            image_tensor = self.image_transform(librosa.load(image_path, duration=30, sr=44100, dtype=np.float32)[0])
         except Exception as e:
             print(f"Failed to load image '{image_path}' - '{e}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
@@ -147,15 +139,6 @@ class CocoCaptionDataset(Dataset):
             tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1))
         elif padding < 0:
             tokens = tokens[:self.max_token_length]
-        
-        MAX_SAMPLE_LENGTH = 882000
-
-        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
-            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
-        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
-            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
         
         return {
             "audio_tensor": image_tensor,
@@ -241,19 +224,10 @@ class FileFolderDataset(Dataset):
 
         try:
             image_file = self.image_files[key]
-            image_tensor = self.image_transform(librosa.load(image_file, duration=20, sr=44100, dtype=np.float32)[0])
+            image_tensor = self.image_transform(librosa.load(image_file, duration=30, sr=44100, dtype=np.float32)[0])
         except Exception as e:
             print(f"Failed to load image '{image_file}' - '{e}'. Skipping.")
             return None  # return None to be filtered in the batch collate_fn
-
-        MAX_SAMPLE_LENGTH = 882000
-
-        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
-            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
-        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
-            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
 
         output["audio_tensor"] = image_tensor
 
@@ -320,16 +294,7 @@ def create_webdataset(
         output = {}
 
         image_data = item[image_key]
-        image_tensor = image_transform(librosa.load(image_data, duration=20, sr=44100, dtype=np.float32)[0])
-
-        MAX_SAMPLE_LENGTH = 882000
-
-        if image_tensor.shape[-1] > MAX_SAMPLE_LENGTH:
-            image_tensor = image_tensor[:, :MAX_SAMPLE_LENGTH]
-        elif image_tensor.shape[-1] < MAX_SAMPLE_LENGTH:
-            pad = MAX_SAMPLE_LENGTH - image_tensor.shape[-1]
-            zeros = torch.zeros(*image_tensor.shape[:-1], pad, dtype=image_tensor.dtype)
-            image_tensor = torch.cat((image_tensor, zeros), dim=-1)
+        image_tensor = image_transform(librosa.load(image_data, duration=30, sr=44100, dtype=np.float32)[0])
 
         output["audio_tensor"] = image_tensor
 
@@ -459,12 +424,14 @@ def preprocess_dataset(
     max_token_length: int = 128,
     use_all_vit_features: bool = True,
     device: str = "cuda:0",
-    image_folder_path: str = None
+    image_folder_path: str = None,
+    audio_chunk_size: int = 100000,
+    audio_num_chunks: int = 8
 ):
 
     model = AudioCLIPModel(pretrained=clip_model).eval().to(device)
     preproc_transform = ToTensor1D()
-    preprocess = lambda x: preproc_transform(x.reshape(1, -1))
+    preprocess = lambda x: splice_audio(x, preproc_transform, chunk_size=audio_chunk_size, num_chunks=audio_num_chunks)
 
     if input_format == "files":
         dataset = FileFolderDataset(
@@ -511,9 +478,24 @@ def preprocess_dataset(
     bar = tqdm.tqdm()
     for items in data:
         with torch.no_grad():
-            audio_embs = model.encode_audio(
-                items["audio_tensor"].to(device)
-            ).cpu().numpy()
+            # Tile embeddings
+            tensor = items["audio_tensor"]
+            tensor = tensor.view(tensor.shape[0] * tensor.shape[1], tensor.shape[-1])
+            tensor = tensor.to(device)
+
+            tile_embs = model.encode_audio(tensor).cpu()
+            tile_embs = tile_embs.view(*items["audio_tensor"].shape[:-1], -1)
+
+            # Global embeddings
+            tensor = items["audio_tensor"]
+            tensor = torch.flatten(tensor, start_dim=1)
+            tensor = tensor.to(device)
+
+            global_embs = model.encode_audio(tensor).cpu()
+            global_embs = global_embs.view(tensor.shape[0], 1, -1)
+
+            # Concat to produce global+tile embeds
+            audio_embs = torch.cat((global_embs, tile_embs), dim=1)
 
             tokens = items["tokens"]
 
