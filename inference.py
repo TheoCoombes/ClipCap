@@ -9,8 +9,9 @@ from PIL import Image
 import numpy as np
 #import clip
 
+from utils.audioclip_audio_splice import splice_audio
 from audioclip.model import AudioCLIP as AudioCLIPModel
-from audioclip.utils.transforms import ToTensor1D, frame_signal
+from audioclip.utils.transforms import ToTensor1D
 from urllib.parse import unquote
 import librosa
 
@@ -310,10 +311,26 @@ def demo_generate_captions(
     **generation_kwargs
 ) -> Tuple[List[str], torch.Tensor]:
     
-    image = clip_preproc(image).unsqueeze(0).to(device)
+    transformed_tensor = clip_preproc(image).unsqueeze(0)
 
     with torch.no_grad():
-        prefix = clip_model.encode_audio(image).to(device, dtype=torch.float32)
+        tensor = transformed_tensor.view(transformed_tensor.shape[0] * transformed_tensor.shape[1], transformed_tensor.shape[-1])
+        tensor = tensor.to(device)
+
+        tile_embs = model.encode_audio(tensor)
+        tile_embs = tile_embs.view(*transformed_tensor.shape[:-1], -1)
+
+        # Global embeddings
+        tensor = torch.flatten(transformed_tensor, start_dim=1)
+        tensor = tensor.to(device)
+
+        global_embs = model.encode_audio(tensor)
+        global_embs = global_embs.view(transformed_tensor.shape[0], 1, -1)
+
+        # Concat to produce global+tile embeds
+        prefix = torch.cat((global_embs, tile_embs), dim=1)
+
+        prefix = prefix.to(device, dtype=torch.float32)
         prefix_embed = model.clip_project(prefix)   #.reshape(-1, model.prefix_length, model.lm_embedding_size)
     
     if text_prefix is not None:
@@ -423,7 +440,7 @@ def _shutterstock_demo(
 ):
     clip_model = AudioCLIPModel(pretrained=clip_model).eval().to(device)
     preproc_transform = ToTensor1D()
-    preprocess = lambda x: preproc_transform(x.reshape(1, -1))
+    preprocess = lambda x: splice_audio(x, preproc_transform, chunk_size=44100, num_chunks=30)
 
     if language_model_type == "gpt2":
         language_model = GPT2.create(language_model_variant, cache_dir=hf_cache_dir)
