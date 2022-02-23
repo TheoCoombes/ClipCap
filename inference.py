@@ -317,14 +317,14 @@ def demo_generate_captions(
         tensor = transformed_tensor.view(transformed_tensor.shape[0] * transformed_tensor.shape[1], transformed_tensor.shape[-1])
         tensor = tensor.to(device)
 
-        tile_embs = model.encode_audio(tensor)
+        tile_embs = clip_model.encode_audio(tensor)
         tile_embs = tile_embs.view(*transformed_tensor.shape[:-1], -1)
 
         # Global embeddings
         tensor = torch.flatten(transformed_tensor, start_dim=1)
         tensor = tensor.to(device)
 
-        global_embs = model.encode_audio(tensor)
+        global_embs = clip_model.encode_audio(tensor)
         global_embs = global_embs.view(transformed_tensor.shape[0], 1, -1)
 
         # Concat to produce global+tile embeds
