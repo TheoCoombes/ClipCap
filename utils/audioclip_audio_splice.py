@@ -14,6 +14,6 @@ def splice_audio(audio: np.ndarray, transform: Callable, chunk_size: int = 100_0
         zeros = np.zeros(pad_size, dtype=audio.dtype)
         audio = np.concatenate((audio, zeros), axis=0)
     
-    chunks = np.array(np.split(audio, num_chunks, axis=1), dtype=audio.dtype)
+    chunks = np.array(np.split(audio, num_chunks, axis=0), dtype=audio.dtype)
 
     return transform(chunks)
