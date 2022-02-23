@@ -497,6 +497,7 @@ def preprocess_dataset(
             # Concat to produce global+tile embeds
             audio_embs = torch.cat((global_embs, tile_embs), dim=1)
 
+            audio_embs = audio_embs.numpy()
             tokens = items["tokens"]
 
             output_sink.add(audio_embs, tokens)
