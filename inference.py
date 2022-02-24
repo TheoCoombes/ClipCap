@@ -9,7 +9,7 @@ from PIL import Image
 import numpy as np
 #import clip
 
-from audioclip.model.clip.clip import tokenize as tokenize_clip
+from clip import tokenize as tokenize_clip
 from utils.audioclip_audio_splice import splice_audio
 from audioclip.model import AudioCLIP as AudioCLIPModel
 from audioclip.utils.transforms import ToTensor1D
