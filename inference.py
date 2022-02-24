@@ -495,7 +495,7 @@ def _shutterstock_demo(
         print(audio_file)
         print(captions)
 
-        text_inputs = tokenize_clip(*captions).to(device)
+        text_inputs = tokenize_clip([*captions]).to(device)
 
         with torch.no_grad():
             text_features = clip_model.encode_text(text_inputs)
