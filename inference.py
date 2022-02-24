@@ -9,7 +9,6 @@ from PIL import Image
 import numpy as np
 #import clip
 
-from clip import tokenize as tokenize_clip
 from utils.audioclip_audio_splice import splice_audio
 from audioclip.model import AudioCLIP as AudioCLIPModel
 from audioclip.utils.transforms import ToTensor1D
@@ -495,10 +494,8 @@ def _shutterstock_demo(
         print(audio_file)
         print(captions)
 
-        text_inputs = tokenize_clip([*captions], truncate=True).to(device)
-
         with torch.no_grad():
-            text_features = clip_model.encode_text(text_inputs)
+            text_features = clip_model.encode_text(captions)
 
         image_features /= image_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
