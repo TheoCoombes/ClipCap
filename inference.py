@@ -495,7 +495,7 @@ def _shutterstock_demo(
         print(captions)
 
         with torch.no_grad():
-            text_features = clip_model.encode_text(captions)
+            text_features = clip_model.encode_text([[caption] for caption in captions])
 
         image_features /= image_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
