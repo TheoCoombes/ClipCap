@@ -9,6 +9,7 @@ from PIL import Image
 import numpy as np
 #import clip
 
+from audioclip.model.clip.clip import tokenize as tokenize_clip
 from utils.audioclip_audio_splice import splice_audio
 from audioclip.model import AudioCLIP as AudioCLIPModel
 from audioclip.utils.transforms import ToTensor1D
@@ -350,7 +351,7 @@ def demo_generate_captions(
     if text_prefix is not None:
         generated_captions = [(text_prefix + caption) for caption in generated_captions]
     
-    return generated_captions, prefix
+    return generated_captions, prefix[:, 0]
 
 
 # def demo(
@@ -485,7 +486,7 @@ def _shutterstock_demo(
     for audio_file in tqdm(sorted(list(samples_path.glob("*.wav")), key=lambda x: x.name)[:total_samples], desc='inference'):
         track, _ = librosa.load(audio_file, duration=30, sr=44100, dtype=np.float32)
 
-        captions, _ = demo_generate_captions(
+        captions, image_features = demo_generate_captions(
             model, tokenizer, clip_model, preprocess, track,
             use_beam_search=use_beam_search, device=device,
             number_to_generate=number_to_generate, text_prefix=text_prefix
@@ -494,30 +495,29 @@ def _shutterstock_demo(
         print(audio_file)
         print(captions)
 
-        # text_inputs = clip.tokenize([original_caption, *captions], truncate=True).to(device)
+        text_inputs = tokenize_clip(*captions).to(device)
 
-        # with torch.no_grad():
-        #     text_features = clip_model.encode_text(text_inputs)
+        with torch.no_grad():
+            text_features = clip_model.encode_text(text_inputs)
 
-        # image_features /= image_features.norm(dim=-1, keepdim=True)
-        # text_features /= text_features.norm(dim=-1, keepdim=True)
+        image_features /= image_features.norm(dim=-1, keepdim=True)
+        text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        #similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
-        #similarities = similarities.tolist()
+        similarities = image_features.cpu().numpy() @ text_features.cpu().numpy().T
+        similarities = similarities.tolist()
 
-        #original_sim = similarities[0][0]
-        #generated_sims = similarities[0][1:]
+        generated_sims = similarities[0]
 
-        #best_sim = max(generated_sims)
-        #best_caption = captions[generated_sims.index(best_sim)]
+        best_sim = max(generated_sims)
+        best_caption = captions[generated_sims.index(best_sim)]
 
         sample_data[audio_file.stem] = {
             "original_caption": unquote(audio_file.name.split(".")[0]),
             #"original_sim": original_sim,
             "generated_captions": captions,
-            #"generated_sim": generated_sims,
-            #"best_caption": best_caption,
-            #"best_sim": best_sim
+            "generated_sim": generated_sims,
+            "best_caption": best_caption,
+            "best_sim": best_sim
         }
 
         # Collect the records we'll need for scoring
