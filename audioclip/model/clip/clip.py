@@ -187,7 +187,8 @@ def tokenize(texts: Union[str, List[str]], context_length: int = 77) -> torch.Lo
 
     for i, tokens in enumerate(all_tokens):
         if len(tokens) > context_length:
-            raise RuntimeError(f"Input {texts[i]} is too long for context length {context_length}")
+            tokens = tokens[:context_length]
+            tokens[-1] = eot_token
         result[i, :len(tokens)] = torch.tensor(tokens)
 
     return result

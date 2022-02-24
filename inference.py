@@ -491,9 +491,6 @@ def _shutterstock_demo(
             number_to_generate=number_to_generate, text_prefix=text_prefix
         )
 
-        print(audio_file)
-        print(captions)
-
         with torch.no_grad():
             text_features = clip_model.encode_text([[caption] for caption in captions])
 
@@ -507,6 +504,10 @@ def _shutterstock_demo(
 
         best_sim = max(generated_sims)
         best_caption = captions[generated_sims.index(best_sim)]
+
+        print(audio_file)
+        print(best_caption)
+        print(best_sim)
 
         sample_data[audio_file.stem] = {
             "original_caption": unquote(audio_file.name.split(".")[0]),
