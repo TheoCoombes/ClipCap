@@ -1,5 +1,5 @@
-# CLIP-Image-Captioning
-[WIP] Using CLIP+GPT2 to generate captions from images.
+# ClipCap
+Using pretrained encoder models (such as CLIP) & GPT-2 to generate captions from images. More details to come soon.
 
 ## Preprocessing Datasets
 You can preprocess existing datasets using the `create_dataset.py` script:
