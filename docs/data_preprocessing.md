@@ -20,6 +20,9 @@ CLAP also requires `torchaudio` installed for the audio transforms, also install
 pip install torchaudio
 ```
 
+### Other Encoders
+Feel free to submit and issue and/or PR to help support other encoders. This repo has been designed to be as modular and reproducible as possible, and it has therefore been made very easy to implement your own encoders into ClipCap. You can take a look at the [sample encoder script](/ClipCap/encoders/_baseformat.py) as a guide when creating your pull requests.
+
 ## Running the Preprocessor
 Once all requirements (including `ClipCap`) have been installed, you can run the preprocessor using the command below:
 ```bash
