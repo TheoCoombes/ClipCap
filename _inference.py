@@ -1,3 +1,6 @@
+# OBSOLETE (placeholder for reference)
+
+
 from torchvision.transforms import Compose
 from clip.model import VisionTransformer
 from typing import Tuple, List, Optional
