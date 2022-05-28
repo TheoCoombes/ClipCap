@@ -17,7 +17,7 @@ if __name__ == "__main__":
         name="ClipCap",
         packages=find_packages(),
         include_package_data=True,
-        version="0.0.1",
+        version="0.0.2",
         license="MIT",
         description="Using pretrained encoder and language models to generate captions from multimedia inputs.",
         long_description=long_description,
