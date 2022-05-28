@@ -3,7 +3,7 @@ from typing import Optional
 import torch.nn as nn
 import torch
 
-from .MultiHeadAttention import MultiHeadAttention
+from ClipCap.model.attention import MultiHeadAttention
 
 class Transformer(nn.Module):
     def __init__(self, dim_self: int, num_heads: int, num_layers: int, dim_ref: Optional[int] = None,
@@ -111,51 +111,51 @@ class TransformerLayer(nn.Module):
 
 
 class TransformerMapper(nn.Module):
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, num_heads: int=8, num_layers: int=8):
+    def __init__(self, dim_encoder: int, lm_embedding_size: int, prefix_length: int, projection_length: int, num_heads: int = 8, num_layers: int = 8):
         super().__init__()
+        self.projection_length = projection_length
 
-        self.clip_length = clip_length
-        self.transformer = Transformer(dim_embedding, num_heads, num_layers)
-        self.linear = nn.Linear(dim_clip, clip_length * dim_embedding)
-        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        self.transformer = Transformer(lm_embedding_size, num_heads, num_layers)
+        self.linear = nn.Linear(dim_encoder, projection_length * lm_embedding_size)
+        self.prefix_const = nn.Parameter(torch.randn(prefix_length, lm_embedding_size), requires_grad=True)
 
     def forward(self, x):
-        x = self.linear(x).view(x.shape[0], self.clip_length, -1)
+        x = self.linear(x).view(x.shape[0], self.projection_length, -1)
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
 
-        out = self.transformer(prefix)[:, self.clip_length:]
+        out = self.transformer(prefix)[:, self.projection_length:]
 
         return out
 
     
-class TransformerMapperAllFeatures(nn.Module):
-    def __init__(self, dim_clip: int, dim_embedding: int, prefix_length: int, clip_length: int, use_pos_embeddings: bool, num_heads: int=8, num_layers: int=8):
+class TransformerMapperWindowed(nn.Module):
+    def __init__(self, encoder_embedding_size: int, lm_embedding_size: int, prefix_length: int, projection_length: int, window_size: int, use_pos_embeddings: bool, num_heads: int = 8, num_layers: int = 8):
         super().__init__()
+        self.projection_length = projection_length
+        self.window_size = window_size
 
-        self.transformer = Transformer(dim_embedding, num_heads, num_layers)
-        self.linear = nn.Linear(dim_clip, dim_embedding)
-        self.prefix_const = nn.Parameter(torch.randn(prefix_length, dim_embedding), requires_grad=True)
+        self.transformer = Transformer(lm_embedding_size, num_heads, num_layers)
+        self.linear = nn.Linear(encoder_embedding_size, projection_length * lm_embedding_size)
+        self.prefix_const = nn.Parameter(torch.randn(prefix_length, lm_embedding_size), requires_grad=True)
+        
         if use_pos_embeddings:
-            print('Using position embeddings.')
-            self.pos_embeddings = nn.Parameter(torch.randn(clip_length, dim_embedding), requires_grad=True)
+            print('Using positional embeddings.')
+            self.pos_embeddings = nn.Parameter(torch.randn(window_size, lm_embedding_size), requires_grad=True)
         else:
             self.pos_embeddings = None
 
-    def forward(self, x):
-        batch_size = x.shape[0]
-
-        x = self.linear(x)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.linear(x).view(x.shape[0], (self.window_size * self.projection_length), -1)
 
         if self.pos_embeddings is not None:
-            p = self.pos_embeddings.unsqueeze(0).expand(batch_size, *self.pos_embeddings.shape)
+            p = self.pos_embeddings.unsqueeze(0).expand(x.shape[0], *self.pos_embeddings.shape)
             x = x + p
 
-        prefix = self.prefix_const.unsqueeze(0).expand(batch_size, *self.prefix_const.shape)
+        prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
 
-        clip_seq_len = x.shape[1]
-        out = self.transformer(prefix)[:, clip_seq_len:]
+        out = self.transformer(prefix)[:, (self.window_size * self.projection_length):]
 
         return out
