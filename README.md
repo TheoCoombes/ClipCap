@@ -8,13 +8,13 @@ pip install git+https://github.com/TheoCoombes/ClipCap.git
 ```
 
 ## [Data Preprocessing](/docs/data_preprocessing.md)
-You can run the preprocess script using the command below. ([More info](/docs/data_preprocessing.md))
+You can run the data preprocess script using the command below. ([More info](/docs/data_preprocessing.md))
 ```bash
 python3 -m ClipCap.preprocess --help
 ```
 
 ## [Training](/docs/training.md)
-You can train new models using preprocessed datasets using the `train.py` script:
+You can run the training script using preprocessed data with the command below. ([More info](/docs/training.md))
 ```bash
 python3 -m ClipCap.train --help
 ```
