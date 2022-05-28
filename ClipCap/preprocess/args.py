@@ -65,10 +65,7 @@ def add_preprocess_args(parser: ArgumentParser) -> ArgumentParser:
         help="number of output partitions",
     )
     
-    wds = parser.add_argument_group(
-        title='input-format: webdataset',
-        description="load data using the webdataset library (see https://github.com/webdataset/webdataset)"
-    )
+    wds = parser.add_argument_group('--input-format=webdataset')
     wds.add_argument(
         "--wds-media-key",
         type=str,
@@ -94,15 +91,12 @@ def add_preprocess_args(parser: ArgumentParser) -> ArgumentParser:
         help="[webdataset reader only] webdataset cache path (optional)",
     )
 
-    files = parser.add_argument_group(
-        title='input-format: files',
-        description="load data using a folder containing media files (see below), and .txt files containing captions."
-    )
+    files = parser.add_argument_group('--input-format=files')
     files.add_argument(
         "--media-file-extensions",
         type=str,
         default="png,jpg,jpeg,bmp",
-        help="[files reader only] comma seperated file extensions for the media to be loaded, e.g. 'txt,jpg'.",
+        help="[files reader only] comma seperated file extensions for the media to be loaded, e.g. 'mp3,wav'.",
     )
 
     return parser
