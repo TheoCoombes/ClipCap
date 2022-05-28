@@ -105,6 +105,8 @@ def add_training_args(parser: ArgumentParser) -> ArgumentParser:
         help="New data is logged every 'n' steps.",
     )
 
+    return parser
+
 
 # optmizer_lr: float = 2e-5,
 # use_deepspeed_optims: bool = True,

@@ -103,9 +103,10 @@ def start_preprocess() -> int:
     """
     Main preprocess function, using environment args.
     """
-    args = ArgumentParser()
-    args = add_preprocess_args(args)
-    args = add_encoder_args(args)
+    parser = ArgumentParser()
+    parser = add_preprocess_args(parser)
+    parser = add_encoder_args(parser)
+    args = parser.parse_args()
     return preprocess(args)
 
 

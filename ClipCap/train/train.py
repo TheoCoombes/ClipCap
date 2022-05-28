@@ -85,9 +85,10 @@ def start_training() -> int:
     """
     Main preprocess function, using environment args.
     """
-    args = ArgumentParser()
-    args = add_training_args(args)
-    args = add_model_args(args)
+    parser = ArgumentParser()
+    parser = add_training_args(parser)
+    parser = add_model_args(parser)
+    args = parser.parse_args()
     return train(args)
 
 
