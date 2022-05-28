@@ -1,4 +1,5 @@
 from torch.nn import functional as nnf
+from torch.nn import Module
 from typing import Tuple, Callable, Optional
 from io import BytesIO
 import torch
@@ -47,8 +48,7 @@ class CLAPTransform(object):
 
 
 
-def get_clap_encoder(model_path: str, device: str = "cuda") -> Tuple[torch.Module, Callable]:
+def get_clap_encoder(model_path: str, device: str = "cuda") -> Tuple[Module, Callable]:
     from open_clip import CLAP # where open_clip = the LAION-AI/CLAP fork
     
     transform = CLAPTransform()
-    
