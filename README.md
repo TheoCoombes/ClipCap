@@ -2,17 +2,18 @@
 Using pretrained encoder and language models to generate captions from multimedia inputs, allowing high fidelity text generation using the rich detail learned from pretrained LMs on tasks such as image captioning, VQA, audio captioning and more. More details and results to come soon.
 
 ## Installation
+By default, the encoders remained uninstalled for ease of access. View the [data preprocessing](/docs/data_preprocessing.md) documentation for info on how to install these.
 ```bash
 pip install git+https://github.com/TheoCoombes/ClipCap.git
 ```
 
-## Preprocessing Datasets
-You can run the preprocess script using the command below - [More info](/docs/data_preprocessing.md).
+## [Data Preprocessing](/docs/data_preprocessing.md)
+You can run the preprocess script using the command below. ([More info](/docs/data_preprocessing.md))
 ```bash
 python3 -m ClipCap.preprocess --help
 ```
 
-## Training
+## [Training](/docs/training.md)
 You can train new models using preprocessed datasets using the `train.py` script:
 ```bash
 python3 -m ClipCap.train --help

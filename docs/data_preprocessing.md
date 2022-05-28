@@ -29,7 +29,7 @@ Once all requirements (including `ClipCap`) have been installed, you can run the
 python -m ClipCap.preprocess --help
 ```
 
-Running the command with `--help` provides extensive documentation for each individual argument. Alternatively, you can view the [preprocess/args.py file](/ClipCap/preprocess/args.py).
+Running the command with `--help` provides extensive documentation for each individual argument. Alternatively, you can view the [preprocess/args.py](/ClipCap/preprocess/args.py) and [encoder/args.py](/ClipCap/encoder/args.py) files.
 
 ## Example
 ```bash
