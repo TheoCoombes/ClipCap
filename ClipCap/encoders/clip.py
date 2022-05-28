@@ -1,7 +1,8 @@
+from torch.nn import Module as Module
 from typing import Tuple, Callable
 import torch
 
-def get_clip_encoder(encoder_model_variant: str, device: str = "cuda") -> Tuple[torch.Module, Callable]:
+def get_clip_encoder(encoder_model_variant: str, device: str = "cuda") -> Tuple[Module, Callable]:
     from PIL import Image
     import clip
 

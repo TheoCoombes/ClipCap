@@ -1,6 +1,7 @@
 """mapper module transform images and text to embeddings"""
 
 import torch
+from torch.nn import Module
 
 
 def normalized(a, axis=-1, order=2):
@@ -14,7 +15,7 @@ def normalized(a, axis=-1, order=2):
 class EncoderMapper:
     """transforms media and texts into embeddings"""
 
-    def __init__(self, model: torch.Module, normalize: bool = True, device: str = "cuda"):
+    def __init__(self, model: Module, normalize: bool = True, device: str = "cuda"):
         self.model = model
         self.normalize = normalize
         self.device = device
