@@ -1,8 +1,7 @@
 """writer module saves embeddings"""
 
-import fsspec
 from io import BytesIO
-import json
+import fsspec
 import math
 
 

@@ -1,12 +1,6 @@
-torch
-torchvision
-pytorch-lightning
+pytorch_lightning
+embedding_reader
 transformers
-git+https://github.com/OpenAI/CLIP.git
-scikit-image
-numpy
-fire
-tqdm
 fsspec
-pandas
-pycocoevalcap
+torch
+numpy

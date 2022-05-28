@@ -1,6 +1,5 @@
 """main module combines distributor, runner, reader, mapper, writer to produce clip embeddings"""
 
-from braceexpand import braceexpand
 from argparse import ArgumentParser
 
 from ClipCap.preprocess.distributor import PysparkDistributor, SequentialDistributor
@@ -19,6 +18,7 @@ def preprocess(args: ArgumentParser) -> int:
     """
 
     if args.input_format == "webdataset":
+        from braceexpand import braceexpand
         input_dataset = list(braceexpand(args.input_dataset))
     else:
         input_dataset = args.input_dataset

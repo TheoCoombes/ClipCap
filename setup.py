@@ -19,7 +19,7 @@ if __name__ == "__main__":
         include_package_data=True,
         version="0.0.1",
         license="MIT",
-        description="Using pretrained encoder models (such as CLIP) & GPT-2 to generate captions from images. More details to come soon.",
+        description="Using pretrained encoder and language models to generate captions from multimedia inputs.",
         long_description=long_description,
         long_description_content_type="text/markdown",
         author="Theo Coombes",
