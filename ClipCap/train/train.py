@@ -51,6 +51,10 @@ def train(args: ArgumentParser) -> int:
         save_every_n_epochs=args.checkpoint_save_frequency
     )
 
+    # Save model config for future loading / reference.
+    checkpoint_saver.save_config(model_config, training=False)
+    checkpoint_saver.save_config(training_config, training=True)
+
     if args.enable_wandb:
         from pytorch_lightning.loggers import WandbLogger
         logger = WandbLogger(project=args.wandb_project)
