@@ -19,7 +19,8 @@ def preprocess(args: ArgumentParser) -> int:
 
     if args.input_format == "webdataset":
         from braceexpand import braceexpand
-        input_dataset = list(braceexpand(args.input_dataset))
+        datasets = args.input_dataset.split(",")
+        input_dataset = [uri for dataset in datasets for uri in list(braceexpand(dataset))]
     else:
         input_dataset = args.input_dataset
 
