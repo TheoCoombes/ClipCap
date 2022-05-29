@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from typing import Tuple, Iterable
 import torch
 
-from ClipCap.model import get_tokenizer
+from clipcap.model import get_tokenizer
 
 
 class EmbedDataset(IterableDataset):

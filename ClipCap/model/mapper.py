@@ -3,7 +3,7 @@ from typing import Optional
 import torch.nn as nn
 import torch
 
-from ClipCap.model.attention import MultiHeadAttention
+from clipcap.model.attention import MultiHeadAttention
 
 class Transformer(nn.Module):
     def __init__(self, dim_self: int, num_heads: int, num_layers: int, dim_ref: Optional[int] = None,

@@ -95,7 +95,7 @@ def add_training_args(parser: ArgumentParser) -> ArgumentParser:
     wandb.add_argument(
         "--wandb-project",
         type=str,
-        default="ClipCap",
+        default="clipcap",
         help="The name of the Wandb project.",
     )
     wandb.add_argument(

@@ -1,1 +1,1 @@
-from ClipCap.preprocess.preprocess import start_preprocess, preprocess
+from clipcap.preprocess.preprocess import start_preprocess, preprocess

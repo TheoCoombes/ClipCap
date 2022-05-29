@@ -49,8 +49,14 @@ def add_model_args(parser: ArgumentParser) -> ArgumentParser:
     windowed.add_argument(
         "--window-size",
         type=int,
-        default=(4 * 4),
-        help="In CLIP, this is the number of tiles to split the image into (square number). In CLAP, this should be the number of splices the audio recieves before being encoded.",
+        default=None, # (4 * 4)
+        help="[optional] This should be the same as used in the preprocessor. This is equal to `tensor.shape[1]` of the preprocessed dataset.",
+    )
+    windowed.add_argument(
+        "--window-overlap-percentage",
+        type=float,
+        default=0.0,
+        help="[optional] If enabled, the percentage each window should overlap into each other. Default 0% / non-overlapping.",
     )
     windowed.add_argument(
         "--use-positional-embeddings",

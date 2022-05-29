@@ -1,6 +1,6 @@
 # Reference format for modular encoders (useful for creating PRs).
 
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Optional
 from torch.nn import Module
 from io import BytesIO
 import torch
@@ -27,10 +27,12 @@ class BaseEncoderTransform(object):
     
         return media_tensor
 
-def get_base_encoder(model_specific_variable: str, device: str = "cuda") -> Tuple[Module, Callable]:
-    # This function then gets plugged into `__init__.py`, taking in a single string argument and device string as parameters.
+def get_base_encoder(model_specific_variable: str, window_size: Optional[int] = None, device: str = "cuda") -> Tuple[Module, Callable]:
+    # This function then gets plugged into `get_encoder(...)` at `base.py` where this function takes a single string argument and device string as params.
     # For model-specific config, perhaps it's best to implement a dictionary somewhere? e.g. {model_variant: {config_dict...}}
     # `model_specific_variable` can be anything tailored best to the model, e.g. a path to the checkpoint or HuggingFace transformers model name.
+    # `window_size` is optional and does no neccesarily need to be supported for the model, however, allows for tiling of the content allowing more \
+    #    fine-grained detail to be inputted into the LM. See `clip.py` for an example of this implementation.
 
     # from encoderlibrary import Encoder
     Encoder = object # placeholder for demo (see above for example)

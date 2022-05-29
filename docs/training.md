@@ -6,10 +6,10 @@ You must have a preprocessed dataset in order to begin training. View the [data 
 ## Running the Preprocessor
 Once you have preprocessed your dataset, you can run start a training run using the command below:
 ```bash
-python -m ClipCap.train --help
+python -m clipcap.train --help
 ```
 
-Running the command with `--help` provides extensive documentation for each individual argument. Alternatively, you can view the [train/args.py file](/ClipCap/train/args.py). However note that some arguments may be found in some other files, such as the [model/args.py file](/ClipCap/model/args.py).
+Running the command with `--help` provides extensive documentation for each individual argument. Alternatively, you can view the [train/args.py file](/clipcap/train/args.py). However note that some arguments may be found in some other files, such as the [model/args.py file](/clipcap/model/args.py).
 
 ## Example
 ```bash

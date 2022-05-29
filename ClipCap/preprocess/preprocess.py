@@ -2,14 +2,14 @@
 
 from argparse import ArgumentParser
 
-from ClipCap.preprocess.distributor import PysparkDistributor, SequentialDistributor
-from ClipCap.preprocess.reader import folder_to_keys, FilesReader, WebdatasetReader
-from ClipCap.preprocess.args import add_preprocess_args
-from ClipCap.preprocess.mapper import EncoderMapper
-from ClipCap.preprocess.writer import NumpyWriter
-from ClipCap.preprocess.runner import Runner
+from clipcap.preprocess.distributor import PysparkDistributor, SequentialDistributor
+from clipcap.preprocess.reader import folder_to_keys, FilesReader, WebdatasetReader
+from clipcap.preprocess.args import add_preprocess_args
+from clipcap.preprocess.mapper import EncoderMapper
+from clipcap.preprocess.writer import NumpyWriter
+from clipcap.preprocess.runner import Runner
 
-from ClipCap.encoders import get_encoder_from_args, add_encoder_args
+from clipcap.encoders import get_encoder_from_args, add_encoder_args
 
 
 def preprocess(args: ArgumentParser) -> int:

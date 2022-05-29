@@ -21,15 +21,15 @@ pip install torchaudio
 ```
 
 ### Other Encoders
-Feel free to submit and issue and/or PR to help support other encoders. This repo has been designed to be as modular and reproducible as possible, and it has therefore been made very easy to implement your own encoders into ClipCap. You can take a look at the [sample encoder script](/ClipCap/encoders/_baseformat.py) as a guide when creating your pull requests.
+Feel free to submit and issue and/or PR to help support other encoders. This repo has been designed to be as modular and reproducible as possible, and it has therefore been made very easy to implement your own encoders into ClipCap. You can take a look at the [sample encoder script](/clipcap/encoders/_baseformat.py) as a guide when creating your pull requests.
 
 ## Running the Preprocessor
-Once all requirements (including `ClipCap`) have been installed, you can run the preprocessor using the command below:
+Once all requirements (including `clipcap`) have been installed, you can run the preprocessor using the command below:
 ```bash
-python -m ClipCap.preprocess --help
+python -m clipcap.preprocess --help
 ```
 
-Running the command with `--help` provides extensive documentation for each individual argument. Alternatively, you can view the [preprocess/args.py](/ClipCap/preprocess/args.py) and [encoder/args.py](/ClipCap/encoder/args.py) files.
+Running the command with `--help` provides extensive documentation for each individual argument. Alternatively, you can view the [preprocess/args.py](/clipcap/preprocess/args.py) and [encoder/args.py](/clipcap/encoder/args.py) files.
 
 ## Example
 ```bash

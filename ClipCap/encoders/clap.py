@@ -1,8 +1,32 @@
+from typing import Tuple, Callable, Optional
 from torch.nn import functional as nnf
 from torch.nn import Module
-from typing import Tuple, Callable, Optional
 from io import BytesIO
 import torch
+
+_CONFIG = {
+    "embed_dim": 768,
+    "audio_cfg": {
+        "audio_length": 1024,
+        "clip_samples": 480000,
+        "mel_bins": 64,
+        "sample_rate": 48000,
+        "window_size": 1024,
+        "hop_size": 480,
+        "fmin": 50,
+        "fmax": 14000,
+        "class_num": 527,
+        "model_type": "HTSAT",
+        "model_name": "tiny"
+    },
+    "text_cfg": {
+        "context_length": 77,
+        "vocab_size": 49408,
+        "width": 512,
+        "heads": 8,
+        "layers": 12
+    }
+}
 
 class CLAPTransform(object):
     def __init__(self, sample_rate: int = 48000, mono: bool = True, max_duration: float = 10.0):
@@ -47,9 +71,10 @@ class CLAPTransform(object):
         return waveform
 
 
-def get_clap_encoder(model_path: str, device: str = "cuda") -> Tuple[Module, Callable]:
-    from open_clip import CLAP # where open_clip = the LAION-AI/CLAP fork
-    from open_clip.model import CLAPAudioCfp, CLAPTextCfg
+def get_clap_encoder(model_path: str, window_size: Optional[int] = None,
+                     window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Module, Callable]:
+    import open_clip # where open_clip = the LAION-AI/CLAP fork
+    from collections import OrderedDict
     
     transform = CLAPTransform(
         sample_rate=48000,
@@ -57,18 +82,20 @@ def get_clap_encoder(model_path: str, device: str = "cuda") -> Tuple[Module, Cal
         max_duration=10
     )
 
-    text_config = CLAPTextCfg()
-    audio_config = CLAPAudioCfp()
+    model = open_clip.openai.load_openai_model("ViT-B-16", _CONFIG, device="cpu", jit=False)
+    model = model.float()
 
-    model = CLAP(
-        1234, # ? embed_dim
-        audio_config,
-        text_config,
-        quick_gelu=False
-    )
+    ckpt = torch.load(model_path, map_location="cpu")
+    state_dict = OrderedDict()
 
-    state_dict = torch.load(model_path, map_location="cpu")
+    for key, value in ckpt["state_dict"].items():
+        name = key[7:] # remove `module.`
+        state_dict[name] = value
+
     model.load_state_dict(state_dict)
+    
     model = model.to(device)
 
-    return model.encode_audio, transform
+    encode_audio = lambda x: model.encode_audio(x)["embedding"]
+
+    return encode_audio, transform

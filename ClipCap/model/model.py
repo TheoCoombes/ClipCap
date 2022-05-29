@@ -4,17 +4,18 @@ from typing import Optional, Tuple
 import pytorch_lightning as pl
 import torch
 
-from ClipCap.model.mapper import TransformerMapper, TransformerMapperWindowed
+from clipcap.model.mapper import TransformerMapper, TransformerMapperWindowed
+from clipcap.model.config import Config, TrainingConfig
 
 def get_tokenizer(language_model_name: str, **huggingface_kwargs):
     return AutoTokenizer.from_pretrained(language_model_name, **huggingface_kwargs)
 
 class ClipCapModel(pl.LightningModule):
-    def __init__(self, config: dict, **huggingface_kwargs):
+    def __init__(self, config: Config):
         super().__init__()
         self.save_hyperparameters(config)
 
-        self.language_model = AutoModelForCausalLM.from_pretrained(self.hparams.language_model, **huggingface_kwargs)
+        self.language_model = AutoModelForCausalLM.from_pretrained(self.hparams.language_model)
         self.lm_embedding_size = self.language_model.get_input_embeddings().shape[1]
 
         if self.hparams.use_windowed_embeddings:
@@ -39,7 +40,6 @@ class ClipCapModel(pl.LightningModule):
             )
 
     def forward(self, tokens: torch.Tensor, embeds: torch.Tensor, mask: torch.Tensor, labels: Optional[torch.Tensor] = None):
-            
         embedding_text = self.language_model.get_input_embeddings()(tokens)
 
         prefix_projections = self.transformer_mapper(embeds)
@@ -56,7 +56,7 @@ class ClipCapModel(pl.LightningModule):
 
         return out
     
-    def set_training_config(self, training_config: dict, reinit_optims: bool = False) -> None:
+    def set_training_config(self, training_config: TrainingConfig, reinit_optims: bool = False) -> None:
         """ Stores a dict containing deepspeed args and loss rates etc. (see config.py) """
         self.hparams["training_config"] = training_config
         if reinit_optims:
@@ -67,17 +67,17 @@ class ClipCapModel(pl.LightningModule):
 
         assert self.hparams.training_config is not None, "You must first use `set_training_config` before training."
 
-        if self.hparams.training_config["use_deepspeed_optimisers"]:
+        if self.hparams.training_config.use_deepspeed_optimisers:
             from deepspeed.ops.adam import FusedAdam
-            optimizer = FusedAdam(self.parameters(), lr=self.hparams.training_config["optimizer_lr"], adam_w_mode=True)
+            optimizer = FusedAdam(self.parameters(), lr=self.hparams.training_config.optimizer_lr, adam_w_mode=True)
         else: 
             from torch.optim import AdamW
-            optimizer = AdamW(self.parameters(), lr=self.hparams.training_config["optimizer_lr"])
+            optimizer = AdamW(self.parameters(), lr=self.hparams.training_config.optimizer_lr)
 
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=self.hparams.training_config["scheduler_warmup_steps"],
-            num_training_steps=self.hparams.training_config["total_steps"]
+            num_warmup_steps=self.hparams.training_config.scheduler_warmup_steps,
+            num_training_steps=self.hparams.training_config.total_steps
         )
 
         lr_scheduler_config = {

@@ -1,11 +1,11 @@
 from argparse import ArgumentParser
 import pytorch_lightning as pl
 
-from ClipCap.train.dataloader import get_dataloader
-from ClipCap.train.callback import CheckpointSaver
-from ClipCap.train.args import add_training_args
+from clipcap.train.dataloader import get_dataloader
+from clipcap.train.callback import CheckpointSaver
+from clipcap.train.args import add_training_args
 
-from ClipCap.model import (
+from clipcap.model import (
     ClipCapModel, ClipCapModelPrefixOnly,
     add_model_args, model_config_from_args,
     training_config_from_args
