@@ -57,36 +57,32 @@ class CLAPTransform(object):
         if waveform.shape[-1] > max_waveform_size:
             waveform = waveform[:, :max_waveform_size]
 
-        # Step = the gap between each patch in samples
-        step = math.ceil(waveform.shape[-1] / self.num_windows)
-
         # Size = the length of each patch in samples
-        if self.window_overlap_percentage != 0.0:
-            size = math.ceil(step * (1 + (self.window_overlap_percentage / 100)))
-        else:
-            size = step
+        pad_amount = (self.max_samples * self.num_windows) - waveform.shape[-1]
 
-        # We must now pad the waveform so that the `waveform.unfold` method can produce `self.num_windows` patches.
-        # Formula from https://pytorch.org/docs/stable/generated/torch.Tensor.unfold.html#torch.Tensor.unfold
-        required_waveform_size = math.ceil(waveform.shape[-1] / size) * size
-        if waveform.shape[-1] < required_waveform_size:
+        # Pad before unfolding to avoid the end being cut off.
+        if pad_amount != 0:
             waveform = nnf.pad(
                 waveform,
-                (0, required_waveform_size - waveform.shape[-1], 0, 0),
+                (0, pad_amount, 0, 0),
                 mode="constant",
                 value=0,
             )
+
+        size = math.ceil(waveform.shape[-1] / self.num_windows)
+
+        # Step = the gap between each patch in samples
+        if self.window_overlap_percentage != 0.0:
+            step = math.floor(size * (1 - (self.window_overlap_percentage / 100)))
+        else:
+            step = size
         
         # Unfold waveform into patches of size `size` with stride `step` between each patch.
         tiles = waveform.unfold(-1, size, step)
 
-        if tiles.shape[-1] < self.max_samples:
-            tiles = nnf.pad(
-                tiles,
-                (0, self.max_samples - tiles.shape[-1], 0, 0, 0, 0),
-                mode="constant",
-                value=0,
-            )
+        # If an overlap is enabled, we must remove the extra data from the unfold so that it only as `num_windows` samples.
+        if tiles.shape[1] > self.num_windows:
+            tiles = tiles[:, :self.num_windows, :]
         
         return tiles
    
@@ -100,8 +96,7 @@ class CLAPTransform(object):
             waveform = self.resampler(waveform, file_sample_rate, self.sample_rate)
         
         if self.num_windows is not None:
-            waveform = self.tiled_preprocess(waveform)
-            waveform = self.ensure_tileable(waveform)
+            waveform = torch.cat((waveform, self.tile_waveform(waveform)), dim=0)
 
         else:
             if waveform.shape[-1] > self.max_samples:
