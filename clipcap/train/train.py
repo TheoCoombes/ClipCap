@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import pytorch_lightning as pl
 
 from clipcap.train.dataloader import get_dataloader
@@ -83,9 +83,9 @@ def train(args: ArgumentParser) -> int:
 
 def start_training() -> int:
     """
-    Main preprocess function, using environment args.
+    Main training function.
     """
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
     parser = add_training_args(parser)
     parser = add_model_args(parser)
     args = parser.parse_args()

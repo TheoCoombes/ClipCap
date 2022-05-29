@@ -1,6 +1,6 @@
 """main module combines distributor, runner, reader, mapper, writer to produce clip embeddings"""
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from clipcap.preprocess.distributor import PysparkDistributor, SequentialDistributor
 from clipcap.preprocess.reader import folder_to_keys, FilesReader, WebdatasetReader
@@ -102,9 +102,9 @@ def preprocess(args: ArgumentParser) -> int:
 
 def start_preprocess() -> int:
     """
-    Main preprocess function, using environment args.
+    Main preprocess function.
     """
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
     parser = add_preprocess_args(parser)
     parser = add_encoder_args(parser)
     args = parser.parse_args()

@@ -1,10 +1,10 @@
 # Reference format for modular encoders (useful for creating PRs).
 
-from typing import Tuple, Callable, Optional
+from typing import Tuple, Callable, Optional, Union
 from torch.nn import Module
 from io import BytesIO
 import torch
-
+import os
 
 class BaseEncoderTransform(object):
     def __init__(self, foo: int, bar: str = "wizz"):
@@ -19,8 +19,8 @@ class BaseEncoderTransform(object):
         self.foo = foo
         self.bar = bar
     
-    def __call__(self, file: BytesIO) -> torch.Tensor:
-        # Always inputted with a BytesIO object for modularity.
+    def __call__(self, file: Union[BytesIO, str, bytes, os.PathLike]) -> torch.Tensor:
+        # Dataloaders always call this with a BytesIO object for modularity, however other formats may be useful to the end user.
 
         media = self.loader(file, self.foo, self.bar)
         media_tensor = torch.tensor(media)

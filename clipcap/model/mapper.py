@@ -141,7 +141,6 @@ class TransformerMapperWindowed(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, lm_embedding_size), requires_grad=True)
         
         if use_pos_embeddings:
-            print('Using positional embeddings.')
             self.pos_embeddings = nn.Parameter(torch.randn(window_size, lm_embedding_size), requires_grad=True)
         else:
             self.pos_embeddings = None

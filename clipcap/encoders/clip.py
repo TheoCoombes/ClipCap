@@ -1,9 +1,10 @@
+from typing import Tuple, Callable, Optional, List, Union
 from torch.nn import Module as Module
-from typing import Tuple, Callable, Optional, List
 from io import BytesIO
 from PIL import Image
 import torch
 import math
+import os
 
 class CLIPTransform(object):
     def __init__(self, clip_preprocess: Callable, window_size: Optional[int] = None, window_overlap_percentage: float = 0.0):
@@ -44,7 +45,7 @@ class CLIPTransform(object):
         pixels_per_tile = size // self.window_size
 
         if self.window_overlap_percentage != 0:
-            overlap_amount = math.ceil((self.window_overlap_percentage / pixels_per_tile) / 2)
+            overlap_amount = math.ceil((pixels_per_tile * (self.window_overlap_percentage / 100)) / 2)
         else:
             overlap_amount = 0
 
@@ -76,7 +77,7 @@ class CLIPTransform(object):
 
         return crops
     
-    def __call__(self, file: BytesIO) -> torch.Tensor:
+    def __call__(self, file: Union[BytesIO, str, bytes, os.PathLike]) -> torch.Tensor:
         image = self.loader(file)
 
         if self.window_size is not None:
