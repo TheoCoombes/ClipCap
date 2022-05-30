@@ -96,6 +96,7 @@ class CLAPTransform(object):
     def __call__(self, file: Union[BytesIO, str, bytes, os.PathLike]) -> torch.Tensor:
         waveform, file_sample_rate = self.loader(file, dtype='float32')
         waveform = torch.from_numpy(waveform)
+        print(waveform.shape)
 
         # Convert to mono.
         waveform = torch.mean(waveform, dim=0)
