@@ -34,10 +34,10 @@ class CLAPTransform(object):
     def __init__(self, sample_rate: int = 48000, max_duration: float = 10.0, num_windows: Optional[int] = None,
                  window_overlap_percentage: float = 0.0) -> None:
         import torchaudio.functional as F
-        import torchaudio
+        import soundfile as sf
 
         self.resampler = F.resample
-        self.loader = torchaudio.load
+        self.loader = sf.read
 
         self.sample_rate = sample_rate
         self.max_samples = math.floor(max_duration * sample_rate)
@@ -94,7 +94,8 @@ class CLAPTransform(object):
         return tiles
    
     def __call__(self, file: Union[BytesIO, str, bytes, os.PathLike]) -> torch.Tensor:
-        waveform, file_sample_rate = self.loader(file, channels_first=True)
+        waveform, file_sample_rate = self.loader(file, dtype='float32')
+        waveform = torch.from_numpy(waveform)
 
         # Convert to mono.
         waveform = torch.mean(waveform, dim=0)

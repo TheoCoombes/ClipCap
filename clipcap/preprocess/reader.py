@@ -102,8 +102,8 @@ def create_webdataset(
 
     def preprocess_dataset(item):
         output = {}
-        image_data = item[media_key]
-        data_tensor = sample_processor(io.BytesIO(image_data))
+        media_data = item[media_key]
+        data_tensor = sample_processor(io.BytesIO(media_data))
         output["data_tensor"] = data_tensor
 
         if "/" in caption_key:

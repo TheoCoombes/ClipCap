@@ -2,3 +2,4 @@ git+https://github.com/LAION-AI/CLAP.git@clap
 torchaudio
 h5py
 torchlibrosa
+PySoundFile
