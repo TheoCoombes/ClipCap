@@ -91,7 +91,7 @@ def create_webdataset(
     dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10**10, handler=wds.handlers.warn_and_continue)
 
     def filter_dataset(item):
-        if caption_key not in item:
+        if caption_key.split("/")[0] not in item:
             return False
         elif media_key not in item:
             return False
