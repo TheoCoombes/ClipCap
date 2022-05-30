@@ -10,7 +10,7 @@ def add_preprocess_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--output-folder",
         type=str,
-        default="./train/",
+        default=None,
         help="output path to store the preprocessed data.",
     )
     parser.add_argument(
