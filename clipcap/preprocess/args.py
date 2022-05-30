@@ -4,13 +4,11 @@ def add_preprocess_args(parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         "--input-dataset",
         type=str,
-        default=None,
         help="path to the training dataset (local or remote). For webdatasets, you can comma seperate multiple braced uris to datasets.",
     )
     parser.add_argument(
         "--output-folder",
         type=str,
-        default="./train/",
         help="output path to store the preprocessed data.",
     )
     parser.add_argument(
