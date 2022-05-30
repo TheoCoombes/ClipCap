@@ -40,12 +40,14 @@ def preprocess(args: ArgumentParser) -> int:
             return
 
         if sample_count == 0:
-            print("no sample found")
+            print("no samples found")
             return
         else:
             print(f"The number of samples has been estimated to be {sample_count}")
 
-        args.output_partition_count = int(sample_count / args.write_batch_size) + 1
+        output_partition_count = int(sample_count / args.write_batch_size) + 1
+    else:
+        output_partition_count = args.output_partition_count
 
     def reader_builder(sampler):
         if args.input_format == "files":
@@ -82,14 +84,14 @@ def preprocess(args: ArgumentParser) -> int:
         return NumpyWriter(
             partition_id=i,
             output_folder=args.output_folder,
-            output_partition_count=args.output_partition_count,
+            output_partition_count=output_partition_count,
         )
 
     runner = Runner(
         reader_builder=reader_builder,
         mapper_builder=mapper_builder,
         writer_builder=writer_builder,
-        output_partition_count=args.output_partition_count,
+        output_partition_count=output_partition_count,
     )
 
     if args.distribution_strategy == "sequential":
