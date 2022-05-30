@@ -38,7 +38,7 @@ def add_preprocess_args(parser: ArgumentParser) -> ArgumentParser:
         choices=["sequential", "pyspark"],
         type=str,
         default="sequential",
-        help="see rom1504/clip-retrieval readme for more (pyspark is untested)",
+        help="see rom1504's repo clip-retrieval readme for more (pyspark is untested)",
     )
     parser.add_argument(
         "--workers",
