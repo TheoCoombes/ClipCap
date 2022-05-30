@@ -76,7 +76,7 @@ def add_preprocess_args(parser: ArgumentParser) -> ArgumentParser:
         "--wds-caption-key",
         type=str,
         default="txt",
-        help="[webdataset reader only] key to use for the captions",
+        help="[webdataset reader only] key to use for the captions. 'json_key/text_key' is also allowed for captions contained in json files, e.g. 'json/txt'.",
     )
     wds.add_argument(
         "--wds-samples-per-file",

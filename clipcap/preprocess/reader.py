@@ -3,6 +3,7 @@
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data import DataLoader
 from pathlib import Path
+import json
 import io
 
 
@@ -103,8 +104,15 @@ def create_webdataset(
         data_tensor = sample_processor(io.BytesIO(image_data))
         output["data_tensor"] = data_tensor
 
-        text = item[caption_key]
-        caption = text.decode("utf-8")
+        if "/" in caption_key:
+            json_key, text_key = caption_key.split("/")
+            metadata_raw = item[json_key]
+            metadata = json.loads(metadata_raw.decode("utf-8"))
+            caption = metadata[text_key]
+        else:
+            text = item[caption_key]
+            caption = text.decode("utf-8")
+
         output["text"] = caption
 
         return output
