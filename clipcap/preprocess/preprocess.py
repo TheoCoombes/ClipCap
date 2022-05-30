@@ -95,9 +95,9 @@ def preprocess(args: ArgumentParser) -> int:
     )
 
     if args.distribution_strategy == "sequential":
-        distributor = SequentialDistributor(runner, args.output_partition_count)
+        distributor = SequentialDistributor(runner, output_partition_count)
     elif args.distribution_strategy == "pyspark":
-        distributor = PysparkDistributor(runner, args.output_partition_count)
+        distributor = PysparkDistributor(runner, output_partition_count)
     distributor()
 
     return 0
