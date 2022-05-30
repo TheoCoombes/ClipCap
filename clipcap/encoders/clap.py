@@ -147,6 +147,7 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None,
         state_dict[name] = value
 
     model.load_state_dict(state_dict)
+    model = model.eval()
     model = model.to(device)
 
     def _encode_fn(x: torch.Tensor) -> torch.Tensor:

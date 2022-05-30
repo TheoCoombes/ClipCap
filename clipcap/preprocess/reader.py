@@ -91,7 +91,7 @@ def create_webdataset(
     def filter_dataset(item):
         if "/" not in caption_key and caption_key not in item:
             return False
-        elif caption_key.split("/")[0] not in item:
+        elif "/" in caption_key and caption_key.split("/")[0] not in item:
             return False
         elif media_key not in item:
             return False
@@ -116,6 +116,8 @@ def create_webdataset(
             caption = text.decode("utf-8")
 
         output["text"] = caption
+
+        print(output)
 
         return output
 
