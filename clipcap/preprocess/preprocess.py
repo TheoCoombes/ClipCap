@@ -21,6 +21,7 @@ def preprocess(args: ArgumentParser) -> int:
         from braceexpand import braceexpand
         datasets = args.input_dataset.split(",")
         input_dataset = [uri for dataset in datasets for uri in list(braceexpand(dataset))]
+        print(input_dataset)
     else:
         input_dataset = args.input_dataset
 
