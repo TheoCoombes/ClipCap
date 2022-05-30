@@ -8,9 +8,23 @@ import os
 
 class CLIPTransform(object):
     def __init__(self, clip_preprocess: Callable, window_size: Optional[int] = None, window_overlap_percentage: float = 0.0):
+        from torchvision import transforms
+
         assert math.sqrt(window_size).is_integer(), "`window_size` must be a square number with CLIP, e.g. (3x3) = 9 for tiles of 3 by 3."
 
         self.loader = Image.open
+        if window_overlap_percentage != 0.0:
+            self.img_to_tensor = transforms.ToTensor()
+            n_px = clip_preprocess.transforms[0].size
+            self.clip_transform = transforms.Compose([
+                transforms.Resize(n_px, interpolation=transforms.InterpolationMode.BICUBIC),
+                transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+            ])
+
+        else:
+            self.img_to_tensor = None
+            self.clip_transform = None
+
         self.window_size = window_size
         self.window_overlap_percentage = window_overlap_percentage
         self.clip_preprocess = clip_preprocess
@@ -40,42 +54,28 @@ class CLIPTransform(object):
         
         return image
     
-    def tile_image(self, image: Image.Image) -> List[Image.Image]:
+    def tile_image(self, image: Image.Image) -> torch.Tensor:
         size, _ = image.size # Image is already 1:1 by now.
-        pixels_per_tile = size // self.window_size
+        tiles_per_axis = int(math.sqrt(self.window_size))
+        pixels_per_tile = size // tiles_per_axis
 
         if self.window_overlap_percentage != 0:
-            overlap_amount = math.ceil((pixels_per_tile * (self.window_overlap_percentage / 100)) / 2)
+            step = math.floor(pixels_per_tile * (1 - (self.window_overlap_percentage / 100)))
         else:
-            overlap_amount = 0
+            step = pixels_per_tile
 
-        crops = []
+        image = image.convert("rgb")
+        tensor = self.img_to_tensor(image)
 
-        for x in range(0, size, pixels_per_tile):
-            for y in range(0, size, pixels_per_tile):
-                start_x = x
-                x_length = pixels_per_tile
-                start_y = y
-                y_length = pixels_per_tile
+        tiles = tensor.unfold(1, pixels_per_tile, step).unfold(2, pixels_per_tile, step)
 
-                if self.window_overlap_percentage != 0:
-                    # Width overlap
-                    if start_x >= overlap_amount:
-                        start_x -= overlap_amount
-                    if (size - x_length) >= overlap_amount:
-                        x_length += overlap_amount
+        if tiles.shape[0] > tiles_per_axis:
+            tiles = tiles[:tiles_per_axis, :, :, :, :]
+        if tiles.shape[1] > tiles_per_axis:
+            tiles = tiles[:, :tiles_per_axis, :, :, :]
 
-                    # Height overlap
-                    if start_y >= overlap_amount:
-                        start_y -= overlap_amount
-                    if (size - y_length) >= overlap_amount:
-                        y_length += overlap_amount
-                
-                crop = (start_x, start_y, x_length, y_length)
-                cropped_image = image.crop(crop)
-                crops.append(cropped_image)
+        return tiles
 
-        return crops
     
     def __call__(self, file: Union[BytesIO, str, bytes, os.PathLike]) -> torch.Tensor:
         image = self.loader(file)
@@ -83,17 +83,19 @@ class CLIPTransform(object):
         if self.window_size is not None:
             image = self.center_crop(image) # Image is now squared.
             image = self.ensure_tileable(image) # Image is now divisible into window_size tiles.
-            patches = self.tile_image(image)
-            inputs = [image, *patches]
+            patches = self.tile_image(image) # Create patches from tileable image.
+            patches = self.clip_transform(patches) # Run the remainder of the CLIP transform over it, i.e. resizing and normalizing
         else:
-            inputs = [image]
+            patches = None
 
-        tensors = [self.clip_preprocess(input).unsqueeze(0) for input in inputs]
+        global_tensor = self.clip_preprocess(image)
         
-        if len(tensors) == 1:
-            image_tensor = torch.flatten(tensors[0], end_dim=1)
+        if patches is not None:
+            image_tensor = torch.cat((
+                global_tensor.unsqueeze(0), torch.flatten(patches, start_dim=0, end_dim=1)
+            ), dim=0)
         else:
-            image_tensor = torch.cat(tensors, dim=0)
+            image_tensor = global_tensor
 
         return image_tensor
 
