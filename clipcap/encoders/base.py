@@ -23,7 +23,10 @@ def get_encoder(encoder_model_name: str, encoder_model_variant: str, window_size
 
 
 def get_encoder_from_args(args: ArgumentParser) -> Tuple[Module, Callable]:
+    if args.encoder_model_name == "clip":
+        args.encoder_model_variant = args.encoder_model_variant.replace("_", "/")
+    
     return get_encoder(
-        args.encoder_model_name.replace("_", "/"), args.encoder_model_variant, window_size=args.window_size,
+        args.encoder_model_name, args.encoder_model_variant, window_size=args.window_size,
         window_overlap_percentage=args.window_overlap_percentage, device=args.device
     )
