@@ -153,6 +153,7 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None,
     def _encode_fn(x: torch.Tensor) -> torch.Tensor:
         # 'Hack' to retain tiled audio inputs in the same batch in CLAP.
         original_shape = x.shape
+        print(original_shape)
         
         if window_size is not None:
             # Flatten to allow patches to be inputted into CLAP.

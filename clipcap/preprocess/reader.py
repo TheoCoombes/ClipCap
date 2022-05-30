@@ -117,8 +117,6 @@ def create_webdataset(
 
         output["text"] = caption
 
-        print(output)
-
         return output
 
     transformed_dataset = filtered_dataset.map(preprocess_dataset, handler=wds.handlers.warn_and_continue)
