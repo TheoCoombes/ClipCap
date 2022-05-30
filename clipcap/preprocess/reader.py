@@ -86,7 +86,7 @@ def create_webdataset(
 
     urls = input_sampler(urls)
 
-    dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10**10, handler=wds.handlers.warn_and_continue)
+    dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10**10, handler=wds.handlers.reraise_exception)
 
     def filter_dataset(item):
         if "/" not in caption_key and caption_key not in item:

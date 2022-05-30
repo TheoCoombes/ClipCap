@@ -46,11 +46,7 @@ def preprocess(args: ArgumentParser) -> int:
         else:
             print(f"The number of samples has been estimated to be {sample_count}")
 
-        output_partition_count = sample_count / args.write_batch_size
-        if output_partition_count.is_integer():
-            output_partition_count = int(output_partition_count)
-        else:
-            output_partition_count = math.ceil(output_partition_count)
+        output_partition_count = int(sample_count / args.write_batch_size) + 1
     else:
         output_partition_count = args.output_partition_count
 
