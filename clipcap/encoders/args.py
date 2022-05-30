@@ -12,8 +12,8 @@ def add_encoder_args(parser: ArgumentParser) -> ArgumentParser:
     encoder.add_argument(
         "--encoder-model-variant",
         type=str,
-        default="ViT-L_14",
-        help="The specific version of CLIP e.g. 'ViT-L_14' ('_' gets replaced with '/'), or the path to the CLAP checkpoint.",
+        default="ViT-L/14",
+        help="The specific version of CLIP e.g. 'ViT-L_14' ('/' gets replaced with '_'), or the path to the CLAP checkpoint.",
     )
     encoder.add_argument(
         "--window-size",
@@ -25,7 +25,7 @@ def add_encoder_args(parser: ArgumentParser) -> ArgumentParser:
         "--window-overlap-percentage",
         type=float,
         default=0.0,
-        help="[optional] If enabled, the percentage each window should overlap into each other. Default 0% / non-overlapping.",
+        help="[optional] If enabled, the percentage each window should overlap into each other. Default 0 percent / non-overlapping.",
     )
 
     return parser
