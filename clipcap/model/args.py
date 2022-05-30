@@ -56,7 +56,7 @@ def add_model_args(parser: ArgumentParser) -> ArgumentParser:
         "--window-overlap-percentage",
         type=float,
         default=0.0,
-        help="[optional] If enabled, the percentage each window should overlap into each other. Default 0% / non-overlapping.",
+        help="[optional] If enabled, the percentage each window should overlap into each other. Default 0 percent / non-overlapping.",
     )
     windowed.add_argument(
         "--use-positional-embeddings",
