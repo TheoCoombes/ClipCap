@@ -32,7 +32,7 @@ class OutputSink:
         add to buffers the image embeddings, text embeddings, and meta
         """
 
-        self.batch_count += sample["image_embs"].shape[0]
+        self.batch_count += sample["embeddings"].shape[0]
         self.embeddings.append(sample["embeddings"])
         self.captions.extend(sample["text"])
 
