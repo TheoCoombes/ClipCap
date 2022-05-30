@@ -30,6 +30,7 @@ class Runner:
         while True:
             try:
                 batch = iterator.__next__()
+                print(batch)
             except StopIteration:
                 break
             embeddings = mapper(batch)

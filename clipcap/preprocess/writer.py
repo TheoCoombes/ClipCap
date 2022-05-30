@@ -47,7 +47,7 @@ class OutputSink:
         data_columns = []
         batch_num_str = str(self.batch_num).zfill(self.oom_partition_count)
 
-        embedding_mat = np.concatenate(self.image_embeddings)
+        embedding_mat = np.concatenate(self.embeddings)
         output_path_embeds = self.embed_folder + "/embeds_" + batch_num_str
 
         with self.fs.open(output_path_embeds + ".npy", "wb") as f:
@@ -65,7 +65,6 @@ class OutputSink:
             df.to_parquet(f)
 
     def flush(self):
-        print(self.batch_count)
         if self.batch_count == 0:
             return
         self.__write_batch()
@@ -73,7 +72,7 @@ class OutputSink:
 
 
 class NumpyWriter:
-    """the numpy writer writes embeddings to folders img_emb, text_emb, and metadata"""
+    """the numpy writer writes embeddings and captions to folders"""
 
     def __init__(self, partition_id, output_folder, output_partition_count):
         self.sink = OutputSink(
