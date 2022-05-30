@@ -104,7 +104,7 @@ def start_preprocess() -> int:
     """
     Main preprocess function.
     """
-    parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
+    parser = ArgumentParser() #description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
     parser = add_preprocess_args(parser)
     parser = add_encoder_args(parser)
     args = parser.parse_args()
