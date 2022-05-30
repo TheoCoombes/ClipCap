@@ -15,11 +15,10 @@ class Sampler:
 class Runner:
     """Runner class"""
 
-    def __init__(self, reader_builder, mapper_builder, writer_builder, logger_builder, output_partition_count):
+    def __init__(self, reader_builder, mapper_builder, writer_builder, output_partition_count):
         self.reader_builder = reader_builder
         self.mapper_builder = mapper_builder
         self.writer_builder = writer_builder
-        self.logger_builder = logger_builder
         self.output_partition_count = output_partition_count
 
     def __call__(self, i):
