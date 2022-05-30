@@ -65,7 +65,7 @@ class OutputSink:
             df.to_parquet(f)
 
     def flush(self):
-        print("fluuuussshhh")
+        print(self.batch_count)
         if self.batch_count == 0:
             return
         self.__write_batch()
