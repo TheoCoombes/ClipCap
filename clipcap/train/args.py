@@ -3,6 +3,12 @@ from argparse import ArgumentParser
 def add_training_args(parser: ArgumentParser) -> ArgumentParser:
     training = parser.add_argument_group('training')
     training.add_argument(
+        "--batch-size",
+        type=int,
+        default=64,
+        help="Number of samples contained in each batch.",
+    )
+    training.add_argument(
         "--epochs",
         type=int,
         default=5,

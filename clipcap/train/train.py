@@ -21,6 +21,7 @@ def train(args: ArgumentParser) -> int:
     dataloader, encoder_embedding_size = get_dataloader(
         data_path=args.input_dataset,
         language_model=args.language_model,
+        batch_size=args.batch_size
     )
 
     # Add more args to namespace. [TODO better way to do this?]
