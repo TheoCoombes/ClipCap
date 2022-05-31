@@ -24,7 +24,7 @@ def train(args: ArgumentParser) -> int:
         language_model=args.language_model,
     )
 
-    total_steps = len(dataloader) * args.epochs
+    args.total_steps = len(dataloader) * args.epochs
 
     model_config = model_config_from_args(args)
     training_config = training_config_from_args(args)
