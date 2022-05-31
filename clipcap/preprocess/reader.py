@@ -86,7 +86,7 @@ def create_webdataset(
 
     urls = input_sampler(urls)
 
-    dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10**10, handler=wds.handlers.reraise_exception)
+    dataset = wds.WebDataset(urls, cache_dir=cache_path, cache_size=10**10, handler=wds.handlers.warn_and_continue)
 
     def filter_dataset(item):
         if "/" not in caption_key and caption_key not in item:
@@ -110,7 +110,7 @@ def create_webdataset(
             json_key, text_key = caption_key.split("/")
             metadata_raw = item[json_key]
             metadata = json.loads(metadata_raw.decode("utf-8"))
-            caption = metadata[text_key]
+            caption = metadata[text_key][0]
         else:
             text = item[caption_key]
             caption = text.decode("utf-8")
