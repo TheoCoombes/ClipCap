@@ -29,7 +29,8 @@ class EmbedDataset(IterableDataset):
         self.reader = EmbeddingReader(
             embeddings_folder=embedding_folder,
             metadata_folder=captions_folder,
-            file_format="parquet_npy"
+            file_format="parquet_npy",
+            meta_columns=['caption'],
         )
 
         self.encoder_embedding_size = self.reader.dimension # [-1] TODO PR
