@@ -16,7 +16,7 @@ class ClipCapModel(pl.LightningModule):
         self.save_hyperparameters(config.to_dict())
 
         self.language_model = AutoModelForCausalLM.from_pretrained(self.hparams.language_model)
-        self.lm_embedding_size = self.language_model.get_input_embeddings().shape[1]
+        self.lm_embedding_size = self.language_model.get_input_embeddings().weight.shape[1]
 
         if self.hparams.use_windowed_embeddings:
             self.transformer_mapper = TransformerMapperWindowed(
