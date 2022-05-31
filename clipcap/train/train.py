@@ -17,8 +17,8 @@ def train(args: ArgumentParser) -> int:
     # print(f'Using pytorch version {torch.__version__}')
     # print('Args: ', locals())
 
-    if args.use_deepspeed:
-        assert args.deepspeed_strategy is not None, "--deepspeed-strategy must not be None if --use-deepspeed is set."
+    if args.deepspeed:
+        assert args.deepspeed_strategy is not None, "--deepspeed-strategy must not be None if --deepspeed is enabled."
 
     # Prepare training datasets.
     dataloader, encoder_embedding_size = get_dataloader(
@@ -54,7 +54,7 @@ def train(args: ArgumentParser) -> int:
         args.output_folder,
         args.checkpoint_filename_prefix,
         save_every_n_epochs=args.checkpoint_save_frequency,
-        use_deepspeed=args.use_deepspeed
+        use_deepspeed=args.deepspeed
     )
 
     # Save model config for future loading / reference.
