@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from argparse import ArgumentParser
+from argparse import Namespace
 from typing import Optional
 
 @dataclass
@@ -13,7 +13,7 @@ class TrainingConfig:
         return asdict(self)
     
     @classmethod
-    def from_args(cls: "TrainingConfig", args: ArgumentParser) -> "TrainingConfig":
+    def from_args(cls: "TrainingConfig", args: Namespace) -> "TrainingConfig":
         return cls(
             optimizer_lr=args.optimizer_lr,
             use_deepspeed_optimisers=args.deepspeed,
@@ -25,6 +25,7 @@ class TrainingConfig:
 @dataclass
 class Config:
     language_model: str = "gpt2-xl"
+    train_language_model: bool = False
     prefix_length: int = 10
     projection_length: int = 10
     transformer_layers: int = 8
@@ -42,9 +43,10 @@ class Config:
         return asdict(self)
     
     @classmethod
-    def from_args(cls: "Config", args: ArgumentParser) -> "Config":
+    def from_args(cls: "Config", args: Namespace) -> "Config":
         return cls(
             language_model = args.language_model,
+            train_language_model = args.train_language_model,
             prefix_length = args.prefix_length,
             projection_length = args.projection_length,
             transformer_layers = args.transformer_layers,

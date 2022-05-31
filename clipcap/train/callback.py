@@ -15,7 +15,7 @@ class CheckpointSaver(Callback):
         self.use_deepspeed = use_deepspeed
     
     def save_config(self, config: dict) -> None:
-        with open(f"{self.filename_prefix}_config.yaml", 'w+') as outfile:
+        with open(self.output_path / f"{self.filename_prefix}_config.yaml", 'w+') as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
 
     def on_epoch_end(self, trainer: Trainer, _) -> None:

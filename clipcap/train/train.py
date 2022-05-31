@@ -1,4 +1,4 @@
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
 import pytorch_lightning as pl
 
 from clipcap.train.dataloader import get_dataloader
@@ -11,7 +11,7 @@ from clipcap.model import (
 )
 
 
-def train(args: ArgumentParser) -> int:
+def train(args: Namespace) -> int:
     """ Starts the main training process. """
 
     # print(f'Using pytorch version {torch.__version__}')

@@ -38,7 +38,7 @@ Running the command with `--help` provides extensive documentation for each indi
 ## Example Usage
 Example for preprocessing a webdataset with a pretrained CLAP model, with the webdataset containing FLAC audio files at key `flac` and captions of key `text` contained inside of json files inside the webdataset with the key `json`, resulting in a final `wds-caption-key` of `json/text`.
 ```bash
-python -m clipcap.preprocess \
+python3.8 -m clipcap.preprocess \
     --input-dataset "./datasets/clotho/train/{0..7}.tar"
     --output-folder "./preprocessed/clotho/train/"
     --input-format "webdataset"

@@ -2,7 +2,7 @@ from clipcap.encoders.clip import get_clip_encoder
 from clipcap.encoders.clap import get_clap_encoder
 
 from typing import Tuple, Callable, Optional
-from argparse import ArgumentParser
+from argparse import Namespace
 from torch.nn import Module
 
 def get_encoder(encoder_model_name: str, encoder_model_variant: str, window_size: Optional[int] = None, 
@@ -22,7 +22,7 @@ def get_encoder(encoder_model_name: str, encoder_model_variant: str, window_size
         raise ValueError(f"invalid encoder name: '{encoder_model_name}'")
 
 
-def get_encoder_from_args(args: ArgumentParser) -> Tuple[Module, Callable]:
+def get_encoder_from_args(args: Namespace) -> Tuple[Module, Callable]:
     if args.encoder_model_name == "clip":
         args.encoder_model_variant = args.encoder_model_variant.replace("_", "/")
     
