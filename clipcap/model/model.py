@@ -13,7 +13,7 @@ def get_tokenizer(language_model_name: str, **huggingface_kwargs):
 class ClipCapModel(pl.LightningModule):
     def __init__(self, config: Config):
         super().__init__()
-        self.save_hyperparameters(config)
+        self.save_hyperparameters(config.to_dict())
 
         self.language_model = AutoModelForCausalLM.from_pretrained(self.hparams.language_model)
         self.lm_embedding_size = self.language_model.get_input_embeddings().shape[1]

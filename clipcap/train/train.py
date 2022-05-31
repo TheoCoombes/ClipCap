@@ -7,8 +7,7 @@ from clipcap.train.args import add_training_args
 
 from clipcap.model import (
     ClipCapModel, ClipCapModelPrefixOnly,
-    add_model_args, model_config_from_args,
-    training_config_from_args
+    add_model_args, Config, TrainingConfig
 )
 
 
@@ -26,8 +25,8 @@ def train(args: ArgumentParser) -> int:
 
     args.total_steps = len(dataloader) * args.epochs
 
-    model_config = model_config_from_args(args)
-    training_config = training_config_from_args(args)
+    model_config = Config.from_args(args)
+    training_config = TrainingConfig.from_args(args)
     
     if not args.train_language_model:
         model = ClipCapModelPrefixOnly(model_config)
