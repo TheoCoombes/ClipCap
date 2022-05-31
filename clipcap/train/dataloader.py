@@ -16,6 +16,8 @@ class EmbedDataset(IterableDataset):
                  reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10, max_token_length: int = 128):
         super().__init__()
         self.tokenizer = get_tokenizer(language_model)
+        self.tokenizer.add_special_tokens({'pad_token': self.tokenizer.eos_token})
+
         self.batch_size = batch_size
         self.reader_max_piece_size = reader_max_piece_size
         self.reader_parallel_pieces = reader_parallel_pieces
