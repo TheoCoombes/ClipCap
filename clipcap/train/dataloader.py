@@ -1,8 +1,8 @@
 from torch.utils.data import IterableDataset, DataLoader
 from embedding_reader import EmbeddingReader
-from argparse import ArgumentParser
-from typing import Tuple, Iterable
+from typing import Tuple
 import torch
+import math
 
 from clipcap.model import get_tokenizer
 
@@ -42,7 +42,7 @@ class EmbedDataset(IterableDataset):
         ):
             batch = torch.tensor(batch)
 
-            captions = metadata["caption"]
+            captions = metadata["caption"].tolist()
             print(captions)
             tokens = self.tokenizer.encode(captions, return_tensors="pt")
 
@@ -52,7 +52,7 @@ class EmbedDataset(IterableDataset):
 
 
     def __len__(self) -> int:
-        return self.reader.count
+        return math.ceil(self.reader.count / self.batch_size)
 
 
 def get_dataloader(
