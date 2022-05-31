@@ -111,12 +111,12 @@ class TransformerLayer(nn.Module):
 
 
 class TransformerMapper(nn.Module):
-    def __init__(self, dim_encoder: int, lm_embedding_size: int, prefix_length: int, projection_length: int, num_heads: int = 8, num_layers: int = 8):
+    def __init__(self, encoder_embedding_size: int, lm_embedding_size: int, prefix_length: int, projection_length: int, num_heads: int = 8, num_layers: int = 8):
         super().__init__()
         self.projection_length = projection_length
 
         self.transformer = Transformer(lm_embedding_size, num_heads, num_layers)
-        self.linear = nn.Linear(dim_encoder, projection_length * lm_embedding_size)
+        self.linear = nn.Linear(encoder_embedding_size, projection_length * lm_embedding_size)
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, lm_embedding_size), requires_grad=True)
 
     def forward(self, x):
