@@ -94,7 +94,7 @@ class CLAPTransform(object):
         return tiles
    
     def __call__(self, file: Union[BytesIO, str, bytes, os.PathLike]) -> torch.Tensor:
-        waveform, file_sample_rate = self.loader(file, dtype='float32')
+        waveform, file_sample_rate = self.loader(file, dtype='float32', always_2d=True)
         waveform = torch.from_numpy(waveform)
 
         # Convert to mono.
