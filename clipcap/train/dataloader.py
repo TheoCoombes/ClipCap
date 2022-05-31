@@ -43,6 +43,7 @@ class EmbedDataset(IterableDataset):
             batch = torch.tensor(batch)
 
             captions = metadata["caption"]
+            print(captions)
             tokens = self.tokenizer.encode(captions, return_tensors="pt")
 
             print(tokens)
