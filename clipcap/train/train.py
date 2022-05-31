@@ -18,11 +18,13 @@ def train(args: ArgumentParser) -> int:
     # print('Args: ', locals())
 
     # Prepare training datasets.
-    dataloader = get_dataloader(
+    dataloader, encoder_embedding_size = get_dataloader(
         data_path=args.input_dataset,
         language_model=args.language_model,
     )
 
+    # Add more args to namespace. [TODO better way to do this?]
+    args.encoder_embedding_size = encoder_embedding_size
     args.total_steps = len(dataloader) * args.epochs
 
     model_config = Config.from_args(args)

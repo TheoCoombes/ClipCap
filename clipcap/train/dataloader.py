@@ -32,6 +32,8 @@ class EmbedDataset(IterableDataset):
             file_format="parquet_npy",
             meta_columns=['caption'],
         )
+
+        self.encoder_embedding_size = self.reader.dimension[-1]
     
     def __iter__(self):
         for batch, metadata in self.reader(
@@ -54,9 +56,9 @@ def get_dataloader(
     data_path: str = "./dataset/",
     language_model: str = "gpt2-xl",
     batch_size: int = 256
-) -> DataLoader:
+) -> Tuple[DataLoader, int]:
     """
-    Initializes an EmbedDataset class and returns the appropriate torch DataLoader.
+    Initializes an EmbedDataset class and returns the appropriate torch DataLoader along with the encoder's embedding size for training reference.
     """
     dataset = EmbedDataset(
         data_path=data_path,
@@ -74,4 +76,4 @@ def get_dataloader(
         collate_fn=collate_fn
     )
 
-    return dataloader
+    return dataloader, dataset.encoder_embedding_size
