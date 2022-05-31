@@ -35,6 +35,7 @@ class OutputSink:
         self.batch_count += sample["embeddings"].shape[0]
         self.embeddings.append(sample["embeddings"])
         self.captions.extend(sample["text"])
+        print(self.captions)
 
     def __write_batch(self):
         """
@@ -57,6 +58,11 @@ class OutputSink:
 
         data_lists.append(self.captions)
         data_columns.append("caption")
+        print(self.captions)
+        print(data_lists)
+
+        print(len(self.captions))
+        print(len(data_lists))
 
         df = pd.DataFrame(data=list(zip(*data_lists)), columns=data_columns)
 
