@@ -45,6 +45,8 @@ class EmbedDataset(IterableDataset):
             captions = metadata["caption"]
             tokens = self.tokenizer.encode(captions, return_tensors="pt")
 
+            print(tokens)
+
             yield batch, tokens
 
 
