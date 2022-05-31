@@ -6,7 +6,7 @@ import yaml
 class CheckpointSaver(Callback):
     def __init__(self, output_path: str = "./checkpoints/", filename_prefix: str = "clipclap_demo", save_every_n_epochs: int = 1):
         output_path = Path(output_path)
-        output_path.mkdir(exist_ok=True)
+        output_path.mkdir(parents=True, exist_ok=True)
 
         self.output_path = output_path
         self.filename_prefix = filename_prefix
