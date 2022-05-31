@@ -17,6 +17,9 @@ def train(args: ArgumentParser) -> int:
     # print(f'Using pytorch version {torch.__version__}')
     # print('Args: ', locals())
 
+    if args.use_deepspeed:
+        assert args.deepspeed_strategy is not None, "--deepspeed-strategy must not be None if --use-deepspeed is set."
+
     # Prepare training datasets.
     dataloader, encoder_embedding_size = get_dataloader(
         data_path=args.input_dataset,
@@ -50,12 +53,12 @@ def train(args: ArgumentParser) -> int:
     checkpoint_saver = CheckpointSaver(
         args.output_folder,
         args.checkpoint_filename_prefix,
-        save_every_n_epochs=args.checkpoint_save_frequency
+        save_every_n_epochs=args.checkpoint_save_frequency,
+        use_deepspeed=args.use_deepspeed
     )
 
     # Save model config for future loading / reference.
-    checkpoint_saver.save_config(model_config, training=False)
-    checkpoint_saver.save_config(training_config, training=True)
+    checkpoint_saver.save_config(model_config.to_dict())
 
     if args.enable_wandb:
         from pytorch_lightning.loggers import WandbLogger
