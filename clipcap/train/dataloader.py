@@ -13,12 +13,13 @@ class EmbedDataset(IterableDataset):
     """
 
     def __init__(self, data_path: str = "./dataset/", language_model: str = "gpt2-xl", batch_size: int = 256,
-                 reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10):
+                 reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10, max_token_length: int = 128):
         super().__init__()
         self.tokenizer = get_tokenizer(language_model)
         self.batch_size = batch_size
         self.reader_max_piece_size = reader_max_piece_size
         self.reader_parallel_pieces = reader_parallel_pieces
+        self.max_token_length = max_token_length
         
         if not data_path.endswith("/"):
             data_path += "/" # Keep string to allow s3 etc.
@@ -43,7 +44,7 @@ class EmbedDataset(IterableDataset):
             batch = torch.tensor(batch)
 
             captions = metadata["caption"].to_list()
-            tokens = self.tokenizer.batch_encode_plus(captions, return_attention_mask=False, return_tensors="pt")["input_ids"]
+            tokens = self.tokenizer.batch_encode_plus(captions, padding="longest", return_attention_mask=False, return_tensors="pt")["input_ids"]
 
             yield batch, tokens
 
