@@ -47,12 +47,6 @@ def add_preprocess_args(parser: ArgumentParser) -> ArgumentParser:
         help="number of workers to use for the dataloader",
     )
     parser.add_argument(
-        "--normalize_embeddings",
-        type=bool,
-        default=True,
-        help="whether or not the generated embeddings should be normalized",
-    )
-    parser.add_argument(
         "--write-batch-size",
         type=int,
         default=10**6,
