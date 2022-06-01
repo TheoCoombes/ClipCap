@@ -11,6 +11,7 @@ from clipcap.eval.metrics import evaluate_metrics
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
 from typing import Tuple, Union, Callable
 from braceexpand import braceexpand
+from random import randint
 from pprint import pprint
 import pandas as pd
 import torch
@@ -50,7 +51,7 @@ def eval(args: Namespace) -> int:
             number_to_generate=1
         )
 
-        caption = captions[0]
+        caption = captions[-randint(1, 3)]
         
         predictions.append({
             _DEFAULT_FILENAME_COLUMN: filename,
