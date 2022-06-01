@@ -65,7 +65,7 @@ def generate_beam(
     entry_length: int = 67,
     temperature: float = 1.0
 ):
-    stop_token = tokenizer.eos_token
+    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
     tokens = None
     scores = None
 
