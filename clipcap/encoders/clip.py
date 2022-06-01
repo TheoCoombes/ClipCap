@@ -1,5 +1,5 @@
 from typing import Tuple, Callable, Optional, List, Union
-from torch.nn import Module as Module
+from torch.nn import Module
 from io import BytesIO
 from PIL import Image
 import torch
@@ -102,12 +102,38 @@ class CLIPTransform(object):
 
         return image_tensor
 
+class ClipModel(Module):
+    def __init__(self, model: Module, normalize_embeddings: bool = False, use_windowed_embeddings: bool = False) -> None:
+        super().__init__()
+        self.model = model
+        self.normalize_embeddings =normalize_embeddings
+        self.use_windowed_embeddings = use_windowed_embeddings
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # 'Hack' to retain tiled patch inputs in the same batch in CLIP.
+        original_shape = x.shape
+        
+        if self.use_windowed_embeddings:
+            # Flatten
+            x = torch.flatten(x, start_dim=0, end_dim=1)
+        
+        out = self.model.encode_image(x)
+
+        if self.normalize_embeddings:
+            out /= out.norm(dim=-1, keepdim=True)
+        
+        if self.use_windowed_embeddings:
+            # Unflatten
+            out = out.view(original_shape[0], original_shape[1], *out.shape[1:])
+
+        return out
+
 
 def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = None, normalize_embeddings: bool = False,
                      use_windowed_embeddings: bool = False, window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Callable, Callable]:
     import clip
 
-    model, preprocess = clip.load(encoder_model_variant, device=device)
+    clip_model, preprocess = clip.load(encoder_model_variant, device=device)
 
     transform = CLIPTransform(
         preprocess,
@@ -116,23 +142,13 @@ def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = No
         window_overlap_percentage=window_overlap_percentage
     )
 
-    def _encode_fn(x: torch.Tensor) -> torch.Tensor:
-        # 'Hack' to retain tiled patch inputs in the same batch in CLIP.
-        original_shape = x.shape
-        
-        if use_windowed_embeddings:
-            # Flatten
-            x = torch.flatten(x, start_dim=0, end_dim=1)
-        
-        out = model.encode_image(x)
+    model = ClipModel(
+        clip_model,
+        normalize_embeddings=normalize_embeddings,
+        use_windowed_embeddings=use_windowed_embeddings
+    )
 
-        if normalize_embeddings:
-            out /= out.norm(dim=-1, keepdim=True)
-        
-        if use_windowed_embeddings:
-            # Unflatten
-            out = out.view(original_shape[0], original_shape[1], *out.shape[1:])
+    model = model.eval()
+    model = model.to(device)
 
-        return out
-
-    return _encode_fn, transform
+    return model, transform

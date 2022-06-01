@@ -124,6 +124,31 @@ class CLAPTransform(object):
         
         return new_waveform
 
+class ClapModel(Module):
+    def __init__(self, model: Module, normalize_embeddings: bool = False, use_windowed_embeddings: bool = False) -> None:
+        super().__init__()
+        self.model = model
+        self.normalize_embeddings =normalize_embeddings
+        self.use_windowed_embeddings = use_windowed_embeddings
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # 'Hack' to retain tiled patch inputs in the same batch in CLIP.
+        original_shape = x.shape
+        
+        if self.use_windowed_embeddings:
+            # Flatten
+            x = torch.flatten(x, start_dim=0, end_dim=1)
+        
+        out = self.model.encode_audio(x)["embedding"]
+
+        if self.normalize_embeddings:
+            out /= out.norm(dim=-1, keepdim=True)
+        
+        if self.use_windowed_embeddings:
+            # Unflatten
+            out = out.view(original_shape[0], original_shape[1], *out.shape[1:])
+
+        return out
 
 def get_clap_encoder(model_path: str, window_size: Optional[int] = None, normalize_embeddings: bool = False,
                      use_windowed_embeddings: bool = False, window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Callable, Callable]:
@@ -138,8 +163,8 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None, normali
         window_overlap_percentage=window_overlap_percentage
     )
 
-    model = open_clip.openai.load_openai_model("ViT-B-16", _CONFIG, device="cpu", jit=False)
-    model = model.float()
+    clap_model = open_clip.openai.load_openai_model("ViT-B-16", _CONFIG, device="cpu", jit=False)
+    clap_model = clap_model.float()
 
     ckpt = torch.load(model_path, map_location="cpu")
     state_dict = OrderedDict()
@@ -148,27 +173,17 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None, normali
         name = key[7:] # remove `module.`
         state_dict[name] = value
 
-    model.load_state_dict(state_dict)
+    clap_model.load_state_dict(state_dict)
+    clap_model = clap_model.eval()
+    clap_model = clap_model.to(device)
+
+    model = ClapModel(
+        clap_model,
+        normalize_embeddings=normalize_embeddings,
+        use_windowed_embeddings=use_windowed_embeddings
+    )
+
     model = model.eval()
     model = model.to(device)
 
-    def _encode_fn(x: torch.Tensor) -> torch.Tensor:
-        # 'Hack' to retain tiled audio inputs in the same batch in CLAP.
-        original_shape = x.shape
-        
-        if use_windowed_embeddings:
-            # Flatten to allow patches to be inputted into CLAP.
-            x = torch.flatten(x, start_dim=0, end_dim=1)
-        
-        out = model.encode_audio(x)["embedding"]
-
-        if normalize_embeddings:
-            out /= out.norm(dim=-1, keepdim=True)
-        
-        if use_windowed_embeddings:
-            # Unflatten
-            out = out.view(original_shape[0], original_shape[1], *out.shape[1:])
-
-        return out
-
-    return _encode_fn, transform
+    return model, transform
