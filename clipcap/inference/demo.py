@@ -28,7 +28,7 @@ def inference_demo(args: Namespace) -> int:
         embeds = encode_method(sample)
         prefix = model.transformer_mapper(embeds)
 
-    captions = generate_nucleus_sampling(
+    captions = generate_no_beam(
         model, tokenizer, prefix,
         number_to_generate=args.number_to_generate,
         text_prefix_tokens=text_prefix_tokens

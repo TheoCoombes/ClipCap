@@ -204,7 +204,6 @@ def generate_no_beam(
     text_prefix_tokens: Optional[torch.Tensor] = None,
     entry_length: int = 67,
     temperature: float = 1.0,
-    stop_token: str = '.',
     repetition_penalty: float = 1.2,
     desired_sentence_length: int = 50,
     sentence_length_factor: float = 1.0,
