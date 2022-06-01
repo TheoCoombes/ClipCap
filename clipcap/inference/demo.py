@@ -35,7 +35,7 @@ def inference_demo(args: Namespace) -> int:
     )
 
 
-    caption_tokens = tokenize(captions)
+    caption_tokens = tokenize(captions).to(args.device)
 
     with torch.no_grad():
         text_features = encode_method.model.encode_text(caption_tokens)
