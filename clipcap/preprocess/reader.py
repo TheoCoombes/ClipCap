@@ -110,7 +110,8 @@ def create_webdataset(
             json_key, text_key = caption_key.split("/")
             metadata_raw = item[json_key]
             metadata = json.loads(metadata_raw.decode("utf-8"))
-            caption = metadata[text_key][0]
+            caption = metadata[text_key]
+            assert isinstance(caption, str), "caption must be a string"
         else:
             text = item[caption_key]
             caption = text.decode("utf-8")
