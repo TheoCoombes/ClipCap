@@ -63,7 +63,7 @@ def generate_beam(
     stop_token: str = '.'
 ):
 
-    stop_token = tokenizer.encode_text(stop_token)[0]
+    stop_token = tokenizer.encode(stop_token)[0]
     tokens = None
     scores = None
 
@@ -144,7 +144,7 @@ def generate_nucleus_sampling(
     stop_token: str = '.'
 ):
 
-    stop_token = tokenizer.encode_text(stop_token)[0]
+    stop_token = tokenizer.encode(stop_token)[0]
     tokens = None
     generations = []
 
