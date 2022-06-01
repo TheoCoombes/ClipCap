@@ -40,6 +40,9 @@ def inference_demo(args: Namespace) -> int:
     with torch.no_grad():
         text_features = encode_method.model.encode_text(caption_tokens)
 
+        print(text_features.shape)
+        print(media_features.shape)
+
         media_features /= media_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
