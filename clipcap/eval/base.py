@@ -17,7 +17,7 @@ import pandas as pd
 import torch
 import json
 
-_DEFAULT_REFERENCE_CAPTION_COLUMNS = "caption_reference_{{00..{:02d}}}"
+_DEFAULT_REFERENCE_CAPTION_COLUMNS = "caption_reference_{{01..{:02d}}}"
 _DEFAULT_PREDICTION_COLUMN = "caption_predicted"
 _DEFAULT_FILENAME_COLUMN = "file_name"
 

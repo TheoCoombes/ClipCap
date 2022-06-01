@@ -38,12 +38,12 @@ def inference_demo(args: Namespace) -> int:
     caption_tokens = tokenize(captions).to(args.device)
 
     with torch.no_grad():
-        text_features = encode_method.model.audio_projection(encode_method.model.encode_text(caption_tokens))
+        text_features = encode_method.model.encode_text(caption_tokens)
 
         media_features /= media_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        similarity = (media_features @ text_features.T).softmax(dim=-1)
+        similarites = (media_features @ text_features.T).softmax(dim=-1)
         _, indices = similarity[0].topk(1)
 
     caption_idx = indices[0]
