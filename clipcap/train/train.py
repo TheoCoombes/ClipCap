@@ -20,8 +20,8 @@ def train(args: Namespace) -> int:
     # print(f'Using pytorch version {torch.__version__}')
     # print('Args: ', locals())
 
-    if args.deepspeed:
-        assert args.deepspeed_strategy is not None, "--deepspeed-strategy must not be None if --deepspeed is enabled."
+    if args.enable_deepspeed:
+        assert args.deepspeed_strategy is not None, "--deepspeed-strategy must not be None if --enable-deepspeed is enabled."
 
     with open(Path(args.input_dataset) / "encoder_config.yaml", "r") as f:
         encoder_config_raw = yaml.safe_load(f)
