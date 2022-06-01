@@ -1,7 +1,7 @@
 from clipcap.model.model import ClipCapModel, ClipCapModelPrefixOnly
 from clipcap.encoders.base import get_encoder_from_model
 from clipcap.inference.args import add_inference_args
-from clipcap.inference.base import generate_beam
+from clipcap.inference.base import generate_no_beam
 from clipcap.model.load import load
 
 from clipcap.eval.args import add_eval_args
@@ -46,9 +46,8 @@ def eval(args: Namespace) -> int:
             embeds = encode_method(sample)
             prefix = model.transformer_mapper(embeds)
 
-        captions = generate_beam(
-            model, tokenizer, prefix,
-            number_to_generate=1
+        captions = generate_no_beam(
+            model, tokenizer, prefix
         )
 
         caption = captions[-randint(1, 3)]

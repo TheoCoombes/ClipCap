@@ -1,6 +1,8 @@
 pytorch_lightning
 embedding_reader
 transformers
+scikit-image
+matplotlib
 fsspec
 PyYAML
 torch
