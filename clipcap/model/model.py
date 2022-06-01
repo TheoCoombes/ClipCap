@@ -14,29 +14,30 @@ class ClipCapModel(pl.LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         self.save_hyperparameters(config.to_dict())
+        self.config = config
 
-        self.language_model = AutoModelForCausalLM.from_pretrained(self.hparams.language_model)
+        self.language_model = AutoModelForCausalLM.from_pretrained(self.config.language_model)
         self.lm_embedding_size = self.language_model.get_input_embeddings().weight.shape[1]
 
-        if self.hparams.encoder_config.use_windowed_embeddings:
+        if self.config.encoder_config.use_windowed_embeddings:
             self.transformer_mapper = TransformerMapperWindowed(
-                encoder_embedding_size=self.hparams.encoder_embedding_size,
+                encoder_embedding_size=self.config.encoder_embedding_size,
                 lm_embedding_size=self.lm_embedding_size,
-                prefix_length=self.hparams.prefix_length,
-                projection_length=self.hparams.projection_length,
-                window_size=self.hparams.encoder_config.window_size,
-                use_pos_embeddings=self.hparams.use_positional_embeddings,
-                num_heads=self.hparams.transformer_attention_heads,
-                num_layers=self.hparams.transformer_layers
+                prefix_length=self.config.prefix_length,
+                projection_length=self.config.projection_length,
+                window_size=self.config.encoder_config.window_size,
+                use_pos_embeddings=self.config.use_positional_embeddings,
+                num_heads=self.config.transformer_attention_heads,
+                num_layers=self.config.transformer_layers
             )
         else:
             self.transformer_mapper = TransformerMapper(
-                encoder_embedding_size=self.hparams.encoder_config.encoder_embedding_size,
+                encoder_embedding_size=self.config.encoder_config.encoder_embedding_size,
                 lm_embedding_size=self.lm_embedding_size,
-                prefix_length=self.hparams.prefix_length,
-                projection_length=self.hparams.projection_length,
-                num_heads=self.hparams.transformer_attention_heads,
-                num_layers=self.hparams.transformer_layers
+                prefix_length=self.config.prefix_length,
+                projection_length=self.config.projection_length,
+                num_heads=self.config.transformer_attention_heads,
+                num_layers=self.config.transformer_layers
             )
 
     def forward(self, tokens: torch.Tensor, embeds: torch.Tensor, mask: torch.Tensor, labels: Optional[torch.Tensor] = None):
@@ -49,7 +50,7 @@ class ClipCapModel(pl.LightningModule):
         mask = torch.cat((torch.ones(prefix_projections.shape[:-1], dtype=torch.bool, device=device), mask), dim=1)  # adding prefix mask
 
         if labels is not None:
-            dummy_token = torch.zeros(tokens.shape[0], self.hparams.prefix_length, dtype=torch.int64)
+            dummy_token = torch.zeros(tokens.shape[0], self.config.prefix_length, dtype=torch.int64)
             labels = torch.cat((dummy_token, tokens), dim=1)
         
         out = self.language_model(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
@@ -58,26 +59,27 @@ class ClipCapModel(pl.LightningModule):
     
     def set_training_config(self, training_config: TrainingConfig, reinit_optims: bool = False) -> None:
         """ Stores a dict containing deepspeed args and loss rates etc. (see config.py) """
-        self.hparams["training_config"] = training_config
+        self.config.training_config = training_config
+        self.save_hyperparameters(self.config.to_dict())
         if reinit_optims:
             self.configure_optimizers()
     
     def configure_optimizers(self) -> dict:
         """ Returns a dict containing the model's optimizer and loss rate scheduler. """
 
-        assert self.hparams.training_config is not None, "You must first use `set_training_config` before training."
+        assert self.config.training_config is not None, "You must first use `set_training_config` before training."
 
-        if self.hparams.training_config.use_deepspeed_optimisers:
+        if self.config.training_config.use_deepspeed_optimisers:
             from deepspeed.ops.adam import FusedAdam
-            optimizer = FusedAdam(self.parameters(), lr=self.hparams.training_config.optimizer_lr, adam_w_mode=True)
+            optimizer = FusedAdam(self.parameters(), lr=self.config.training_config.optimizer_lr, adam_w_mode=True)
         else: 
             from torch.optim import AdamW
-            optimizer = AdamW(self.parameters(), lr=self.hparams.training_config.optimizer_lr)
+            optimizer = AdamW(self.parameters(), lr=self.config.training_config.optimizer_lr)
 
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
-            num_warmup_steps=self.hparams.training_config.scheduler_warmup_steps,
-            num_training_steps=self.hparams.training_config.total_steps
+            num_warmup_steps=self.config.training_config.scheduler_warmup_steps,
+            num_training_steps=self.config.training_config.total_steps
         )
 
         lr_scheduler_config = {
@@ -103,7 +105,7 @@ class ClipCapModel(pl.LightningModule):
 
         outputs = self(tokens, embeds, mask)
 
-        logits = outputs.logits[:, self.hparams.prefix_length - 1: -1]
+        logits = outputs.logits[:, self.config.prefix_length - 1: -1]
         loss = F.cross_entropy(logits.reshape(-1, logits.shape[-1]), tokens.flatten(), ignore_index=0)
 
         self.log("loss", loss.float())
