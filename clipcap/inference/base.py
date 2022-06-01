@@ -256,7 +256,11 @@ def generate_no_beam(
                 if stop_token == next_token.item():
                     break
                 else:
-                    tokens = torch.cat((tokens, next_token), dim=1)
+                    if tokens is not None:
+                        tokens = torch.cat((tokens, next_token), dim=1)
+                    else:
+                        tokens = next_token
+                    
                     embeds = torch.cat((embeds, next_token_embed), dim=1)
 
             output_list = list(tokens.squeeze().cpu().numpy())
