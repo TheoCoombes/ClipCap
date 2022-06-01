@@ -26,7 +26,6 @@ def inference_demo(args: Namespace) -> int:
     
     with torch.no_grad():
         embeds = encode_method(sample)
-        embeds /= embeds.norm(dim=-1, keepdim=True)
         prefix = model.transformer_mapper(embeds)
 
     captions = generate_beam(
