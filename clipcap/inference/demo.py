@@ -48,7 +48,7 @@ def inference_demo(args: Namespace) -> int:
         _, indices = similarity[0].topk(1)
 
     caption_idx = indices[0]
-    caption = caption_tokens[caption_idx]
+    caption = captions[caption_idx]
 
     print(caption)
     
