@@ -30,6 +30,7 @@ def inference_demo(args: Namespace) -> int:
         number_to_generate=args.number_to_generate,
         text_prefix_tokens=text_prefix_tokens
     )
+    print(captions)
 
     for caption in captions:
         print(caption)
