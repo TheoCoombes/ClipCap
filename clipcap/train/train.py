@@ -61,7 +61,7 @@ def train(args: Namespace) -> int:
         args.output_folder,
         args.checkpoint_filename_prefix,
         save_every_n_epochs=args.checkpoint_save_frequency,
-        use_deepspeed=args.deepspeed
+        use_deepspeed=args.enable_deepspeed
     )
 
     # Save model config for future loading / reference.

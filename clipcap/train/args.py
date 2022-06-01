@@ -79,7 +79,7 @@ def add_training_args(parser: ArgumentParser) -> ArgumentParser:
 
     deepspeed = parser.add_argument_group('deepspeed')
     deepspeed.add_argument(
-        "--deepspeed",
+        "--enable-deepspeed",
         type=bool,
         default=False,
         help="Train using deepspeed (required if gpus > 1).",
