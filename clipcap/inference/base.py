@@ -191,8 +191,6 @@ def generate_nucleus_sampling(
 
                 if tokens is None:
                     tokens = next_token
-
-                    print(tokens)
                 else:
                     tokens = torch.cat((tokens, next_token), dim=1)
                 
@@ -204,6 +202,7 @@ def generate_nucleus_sampling(
                 if stop_token == next_token.item():
                     break
 
+            print(tokens, tokens.shape)
             output_list = list(tokens.squeeze().cpu().numpy())
             output_text = tokenizer.decode(output_list)
         
