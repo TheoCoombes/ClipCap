@@ -139,6 +139,7 @@ def generate_nucleus_sampling(
     text_prefix_tokens: Optional[torch.Tensor] = None,
     entry_length: int = 67,
     top_p: float = 0.8,
+    top_k = None,
     temperature: float = 1.0
 ):
 
