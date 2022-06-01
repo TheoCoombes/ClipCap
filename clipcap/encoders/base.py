@@ -35,4 +35,4 @@ def get_encoder_from_config(config: EncoderConfig, device: str = "cpu") -> Tuple
     )
 
 def get_encoder_from_model(model: Union[ClipCapModel, ClipCapModelPrefixOnly], device: str = "cpu") -> Tuple[Module, Callable]:
-    return get_encoder_from_config(model.hparams.encoder_config, device=device)
+    return get_encoder_from_config(model.config.encoder_config, device=device)
