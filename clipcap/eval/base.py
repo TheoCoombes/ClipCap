@@ -51,6 +51,8 @@ def eval(args: Namespace) -> int:
         )
 
         caption = captions[-randint(1, 3)]
+        print(filename)
+        print(caption)
         
         predictions.append({
             _DEFAULT_FILENAME_COLUMN: filename,
