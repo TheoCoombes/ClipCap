@@ -148,6 +148,7 @@ def generate_nucleus_sampling(
     stop_token = tokenizer.encode(tokenizer.eos_token)[0]
     top_k = None
     tokens = None
+    final_embeds = None
 
     filter_value = -float('inf')
     generations = []
@@ -159,7 +160,11 @@ def generate_nucleus_sampling(
 
         for _ in range(number_to_generate):
             for _ in range(entry_length):
-                outputs = model.language_model(inputs_embeds=embeds)
+                if final_embeds is not None:
+                    outputs = model.language_model(inputs_embeds=final_embeds)
+                else:
+                    outputs = model.language_model(inputs_embeds=embeds)
+                
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
 
@@ -189,7 +194,10 @@ def generate_nucleus_sampling(
                 else:
                     tokens = torch.cat((tokens, next_token), dim=1)
                 
-                embeds = torch.cat((embeds, next_token_embed), dim=1)
+                if final_embeds is not None:
+                    final_embeds = torch.cat((final_embeds, next_token_embed), dim=1)
+                else:
+                    final_embeds = torch.cat((embeds, next_token_embed), dim=1)
                 
                 if stop_token == next_token.item():
                     break
@@ -198,5 +206,6 @@ def generate_nucleus_sampling(
             output_text = tokenizer.decode(output_list)
         
             generations.append(output_text)
+            tokens = None
     
     return generations
