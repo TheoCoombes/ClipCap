@@ -22,7 +22,11 @@ def inference_demo(args: Namespace) -> int:
     encode_method, sample_processor = get_encoder_from_model(model, device=args.device)
 
     sample = sample_processor(args.sample_path).unsqueeze(0).to(args.device)
+    
     embeds = encode_method(sample)
+    embeds /= embeds.norm(dim=-1, keepdim=True)
+
+
     prefix = model.transformer_mapper(embeds)
 
     captions = generate_beam(
