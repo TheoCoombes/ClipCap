@@ -9,6 +9,7 @@ import yaml
 
 def save_config(config: EncoderConfig, output_folder: str) -> None:
     fs, output_folder = fsspec.core.url_to_fs(output_folder)
+    fs.makedirs(output_folder, exist_ok=True)
 
     with fs.open(output_folder + "/encoder_config.yaml", "w") as f:
         yaml.dump(config.to_dict(), f, default_flow_style=False)
