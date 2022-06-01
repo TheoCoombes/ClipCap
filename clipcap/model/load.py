@@ -23,16 +23,21 @@ def load(model_path: str, config_path: str, device: str = "cpu",
     else:
         model_cls = ClipCapModelPrefixOnly
     
+    model = model_cls(config)
+
+    # Load state dict.
+    state_dict = torch.load(model_path, map_location="cpu")
+
     if from_checkpoint:
-        model = model_cls.load_from_checkpoint(model_path)
-    else:
-        # Is a state_dict.
-        model = model_cls(config.to_dict())
-        state_dict = torch.load(model_path, map_location="cpu")
-        model.load_state_dict(state_dict)
+        state_dict = state_dict["state_dict"]
     
+    model.load_state_dict(state_dict)
+    
+    # Set to eval and load onto device.
     model = model.eval()
     model = model.to(device)
+
+    # Fetch tokenizer.
     tokenizer = get_tokenizer(config.language_model)
 
     return model, tokenizer
