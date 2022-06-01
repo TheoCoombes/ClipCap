@@ -5,6 +5,7 @@ from clipcap.encoders.base import get_encoder_from_model
 from clipcap.model.load import load
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
+import torch
 
 def inference_demo(args: Namespace) -> int:
     model, tokenizer = load(
@@ -23,18 +24,16 @@ def inference_demo(args: Namespace) -> int:
 
     sample = sample_processor(args.sample_path).unsqueeze(0).to(args.device)
     
-    embeds = encode_method(sample)
-    embeds /= embeds.norm(dim=-1, keepdim=True)
-
-
-    prefix = model.transformer_mapper(embeds)
+    with torch.no_grad():
+        embeds = encode_method(sample)
+        embeds /= embeds.norm(dim=-1, keepdim=True)
+        prefix = model.transformer_mapper(embeds)
 
     captions = generate_beam(
         model, tokenizer, prefix,
         number_to_generate=args.number_to_generate,
         text_prefix_tokens=text_prefix_tokens
     )
-    print(captions)
 
     for caption in captions:
         print(caption)
