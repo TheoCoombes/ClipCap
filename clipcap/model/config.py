@@ -18,7 +18,7 @@ class TrainingConfig:
     def from_args(cls: "TrainingConfig", args: Namespace) -> "TrainingConfig":
         return cls(
             optimizer_lr=args.optimizer_lr,
-            use_deepspeed_optimisers=args.deepspeed,
+            use_deepspeed_optimisers=args.enable_deepspeed,
             scheduler_warmup_steps=args.scheduler_warmup_steps,
             total_steps=args.total_steps
         )
