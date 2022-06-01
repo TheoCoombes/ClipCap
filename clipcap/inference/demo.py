@@ -50,6 +50,8 @@ def inference_demo(args: Namespace) -> int:
     caption_idx = indices[0]
     caption = captions[caption_idx]
 
+    print(captions)
+    print()
     print(caption)
     
     return 0
