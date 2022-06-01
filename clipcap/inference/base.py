@@ -220,7 +220,7 @@ def generate_no_beam(
 
         embeds_init = embeds
         for top_p in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
-            tokens = None
+            tokens = text_prefix_tokens
             embeds = embeds_init
             for _ in range(entry_length):
                 # Get logits from a forward pass
@@ -253,14 +253,11 @@ def generate_no_beam(
                 next_token = torch.multinomial(probabilities, 1).unsqueeze(0)
                 next_token_embed = model.language_model.get_input_embeddings()(next_token)
 
-                if tokens is None:
-                    tokens = next_token
-                else:
-                    tokens = torch.cat((tokens, next_token), dim=1)
-                embeds = torch.cat((embeds, next_token_embed), dim=1)
-                
                 if stop_token == next_token.item():
                     break
+                else:
+                    tokens = torch.cat((tokens, next_token), dim=1)
+                    embeds = torch.cat((embeds, next_token_embed), dim=1)
 
             output_list = list(tokens.squeeze().cpu().numpy())
             output_text = tokenizer.decode(output_list)
