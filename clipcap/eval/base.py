@@ -4,6 +4,7 @@ from clipcap.inference.args import add_inference_args
 from clipcap.inference.base import generate_beam
 from clipcap.model.load import load
 
+from clipcap.eval.args import add_eval_args
 from clipcap.eval.dataset import EvalDataset
 from clipcap.eval.metrics import evaluate_metrics
 
@@ -84,6 +85,7 @@ def run_eval() -> int:
     Main inference function.
     """
     parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
+    parser = add_eval_args(parser)
     parser = add_inference_args(parser)
     args = parser.parse_args()
     return eval(args)

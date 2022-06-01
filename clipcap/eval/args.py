@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-def add_inference_args(parser: ArgumentParser) -> ArgumentParser:
+def add_eval_args(parser: ArgumentParser) -> ArgumentParser:
     eval = parser.add_argument_group('eval')
     eval.add_argument(
         "--reference-csv",
