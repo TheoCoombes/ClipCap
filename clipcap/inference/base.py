@@ -165,14 +165,14 @@ def generate_nucleus_sampling(
                     
                 p, largest_p_idx = nnf.softmax(logits, dim=-1).topk(top_k, dim=-1)
                 cumulative_p = p.cumsum(dim=-1)
-                threshold_repeated = top_p + torch.zeros((len(p), 1)).to("cuda:4")
+                threshold_repeated = top_p + torch.zeros((len(p), 1)).to(embeds.device)
                 idx = torch.searchsorted(cumulative_p, threshold_repeated).clip(max=top_k-1).squeeze()
                 cutoffs = cumulative_p[torch.arange(len(cumulative_p)), idx]
                 censored_p = (cumulative_p <= cutoffs[:, None]) * p
                 renormalized_p = censored_p / censored_p.sum(dim=-1, keepdims=True)
 
                 final_p = torch.zeros_like(logits)
-                row_idx = torch.arange(len(p)).unsqueeze(1).repeat(1,top_k).to("cuda:4")
+                row_idx = torch.arange(len(p)).unsqueeze(1).repeat(1,top_k).to(embeds.device)
                 final_p[row_idx, largest_p_idx] = renormalized_p.to(final_p.dtype)
 
                 next_token = torch.multinomial(final_p, num_samples=1)
