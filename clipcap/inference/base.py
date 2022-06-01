@@ -146,6 +146,7 @@ def generate_nucleus_sampling(
 ):
 
     stop_token = tokenizer.encode(tokenizer.eos_token)[0]
+    top_k = None
     tokens = None
 
     filter_value = -float('inf')
