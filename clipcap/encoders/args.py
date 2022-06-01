@@ -15,6 +15,12 @@ def add_encoder_args(parser: ArgumentParser) -> ArgumentParser:
         default="ViT-L_14",
         help="The specific version of CLIP e.g. 'ViT-L_14' ('_' gets replaced with a forward slash), or the path to the CLAP checkpoint.",
     )
+    encoder.add_argument(
+        "--normalize-embeddings",
+        type=bool,
+        default=False,
+        help="Whether or not the generated embeddings should be normalized.",
+    )
 
     windowed = parser.add_argument_group('windowed')
     windowed.add_argument(

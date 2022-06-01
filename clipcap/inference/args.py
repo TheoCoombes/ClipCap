@@ -31,7 +31,7 @@ def add_inference_args(parser: ArgumentParser) -> ArgumentParser:
         "--sample-path",
         type=str,
         default="./image.jpg",
-        help="Path to the sample used for inference.",
+        help="Path to the sample used for inference. In eval, this is the directory containing eval samples with the corresponding filenames to the csv.",
     )
     inference.add_argument(
         "--number-to-generate",

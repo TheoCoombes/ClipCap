@@ -80,7 +80,6 @@ def preprocess(args: Namespace) -> int:
     def mapper_builder():
         return EncoderMapper(
             model=encoder_model,
-            normalize=args.normalize_embeddings,
             device=args.device
         )
 

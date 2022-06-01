@@ -125,8 +125,8 @@ class CLAPTransform(object):
         return new_waveform
 
 
-def get_clap_encoder(model_path: str, window_size: Optional[int] = None, use_windowed_embeddings: bool = False,
-                     window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Module, Callable]:
+def get_clap_encoder(model_path: str, window_size: Optional[int] = None, normalize_embeddings: bool = False,
+                     use_windowed_embeddings: bool = False, window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Callable, Callable]:
     import open_clip # where open_clip = the LAION-AI/CLAP fork
     from collections import OrderedDict
     
@@ -161,6 +161,9 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None, use_win
             x = torch.flatten(x, start_dim=0, end_dim=1)
         
         out = model.encode_audio(x)["embedding"]
+
+        if normalize_embeddings:
+            out /= out.norm(dim=-1, keepdim=True)
         
         if use_windowed_embeddings:
             # Unflatten

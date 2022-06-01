@@ -103,8 +103,8 @@ class CLIPTransform(object):
         return image_tensor
 
 
-def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = None,  use_windowed_embeddings: bool = False,
-                     window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Module, Callable]:
+def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = None, normalize_embeddings: bool = False,
+                     use_windowed_embeddings: bool = False, window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Callable, Callable]:
     import clip
 
     model, preprocess = clip.load(encoder_model_variant, device=device)
@@ -122,10 +122,12 @@ def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = No
         
         if use_windowed_embeddings:
             # Flatten
-            single_dim = original_shape[0] * original_shape[1]
-            x = x.view(single_dim, *original_shape[2:])
+            x = torch.flatten(x, start_dim=0, end_dim=1)
         
         out = model.encode_image(x)
+
+        if normalize_embeddings:
+            out /= out.norm(dim=-1, keepdim=True)
         
         if use_windowed_embeddings:
             # Unflatten
