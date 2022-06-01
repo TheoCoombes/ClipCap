@@ -191,6 +191,8 @@ def generate_nucleus_sampling(
 
                 if tokens is None:
                     tokens = next_token
+
+                    print(tokens)
                 else:
                     tokens = torch.cat((tokens, next_token), dim=1)
                 
