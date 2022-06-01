@@ -43,7 +43,7 @@ def inference_demo(args: Namespace) -> int:
         media_features /= media_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        similarites = (media_features @ text_features.T).softmax(dim=-1)
+        similarity = (media_features @ text_features.T).softmax(dim=-1)
         _, indices = similarity[0].topk(1)
 
     caption_idx = indices[0]
