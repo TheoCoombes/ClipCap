@@ -38,10 +38,8 @@ def inference_demo(args: Namespace) -> int:
     caption_tokens = tokenize(captions).to(args.device)
 
     with torch.no_grad():
+        media_features = encode_method.model.audio_projection(media_features)
         text_features = encode_method.model.encode_text(caption_tokens)
-
-        print(text_features.shape)
-        print(media_features.shape)
 
         media_features /= media_features.norm(dim=-1, keepdim=True)
         text_features /= text_features.norm(dim=-1, keepdim=True)
