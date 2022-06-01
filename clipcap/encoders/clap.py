@@ -32,7 +32,7 @@ _CONFIG = {
 
 class CLAPTransform(object):
     def __init__(self, sample_rate: int = 48000, max_duration: float = 10.0, num_windows: Optional[int] = None,
-                 window_overlap_percentage: float = 0.0) -> None:
+                 use_windowed_embeddings: bool = False, window_overlap_percentage: float = 0.0) -> None:
         import torchaudio.functional as F
         import soundfile as sf
 
@@ -40,8 +40,9 @@ class CLAPTransform(object):
         self.loader = sf.read
 
         self.sample_rate = sample_rate
-        self.max_samples = math.floor(max_duration * sample_rate)
+        self.max_samples = math.ceil(max_duration * sample_rate)
 
+        self.use_windowed_embeddings = use_windowed_embeddings
         self.num_windows = num_windows
         self.window_overlap_percentage = window_overlap_percentage
     
@@ -116,7 +117,7 @@ class CLAPTransform(object):
             )
 
         # Produce tiled audio samples from the original waveform, if enabled.
-        if self.num_windows is not None:
+        if self.use_windowed_embeddings:
             new_waveform = torch.cat((
                 new_waveform.unsqueeze(0), self.tile_waveform(waveform)
             ), dim=0)
@@ -124,7 +125,7 @@ class CLAPTransform(object):
         return new_waveform
 
 
-def get_clap_encoder(model_path: str, window_size: Optional[int] = None,
+def get_clap_encoder(model_path: str, window_size: Optional[int] = None, use_windowed_embeddings: bool = False,
                      window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Module, Callable]:
     import open_clip # where open_clip = the LAION-AI/CLAP fork
     from collections import OrderedDict
@@ -132,6 +133,7 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None,
     transform = CLAPTransform(
         sample_rate=48000,
         max_duration=10,
+        use_windowed_embeddings=use_windowed_embeddings,
         num_windows=window_size,
         window_overlap_percentage=window_overlap_percentage
     )
@@ -154,15 +156,15 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None,
         # 'Hack' to retain tiled audio inputs in the same batch in CLAP.
         original_shape = x.shape
         
-        if window_size is not None:
+        if use_windowed_embeddings:
             # Flatten to allow patches to be inputted into CLAP.
             x = torch.flatten(x, start_dim=0, end_dim=1)
         
         out = model.encode_audio(x)["embedding"]
         
-        if window_size is not None:
+        if use_windowed_embeddings:
             # Unflatten
-            out = out.view(original_shape[0], original_shape[1], *out[1:])
+            out = out.view(original_shape[0], original_shape[1], *out.shape[1:])
 
         return out
 

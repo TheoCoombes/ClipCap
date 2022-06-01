@@ -7,10 +7,12 @@ import math
 import os
 
 class CLIPTransform(object):
-    def __init__(self, clip_preprocess: Callable, window_size: Optional[int] = None, window_overlap_percentage: float = 0.0):
+    def __init__(self, clip_preprocess: Callable, use_windowed_embeddings: bool = False,
+                 window_size: Optional[int] = (3 * 3), window_overlap_percentage: float = 0.0) -> None:
         from torchvision import transforms
 
-        assert math.sqrt(window_size).is_integer(), "`window_size` must be a square number with CLIP, e.g. (3x3) = 9 for tiles of 3 by 3."
+        if use_windowed_embeddings:
+            assert math.sqrt(window_size).is_integer(), "`window_size` must be a square number with CLIP, e.g. (3x3) = 9 for tiles of 3 by 3."
 
         self.loader = Image.open
         if window_overlap_percentage != 0.0:
@@ -25,6 +27,7 @@ class CLIPTransform(object):
             self.img_to_tensor = None
             self.clip_transform = None
 
+        self.use_windowed_embeddings = use_windowed_embeddings
         self.window_size = window_size
         self.window_overlap_percentage = window_overlap_percentage
         self.clip_preprocess = clip_preprocess
@@ -80,7 +83,7 @@ class CLIPTransform(object):
     def __call__(self, file: Union[BytesIO, str, bytes, os.PathLike]) -> torch.Tensor:
         image = self.loader(file)
 
-        if self.window_size is not None:
+        if self.use_windowed_embeddings:
             image = self.center_crop(image) # Image is now squared.
             image = self.ensure_tileable(image) # Image is now divisible into window_size tiles.
             patches = self.tile_image(image) # Create patches from tileable image.
@@ -100,28 +103,33 @@ class CLIPTransform(object):
         return image_tensor
 
 
-def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = None, 
+def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = None,  use_windowed_embeddings: bool = False,
                      window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Module, Callable]:
     import clip
 
     model, preprocess = clip.load(encoder_model_variant, device=device)
 
-    transform = CLIPTransform(preprocess, window_size=window_size, window_overlap_percentage=window_overlap_percentage)
+    transform = CLIPTransform(
+        preprocess,
+        use_windowed_embeddings=use_windowed_embeddings,
+        window_size=window_size,
+        window_overlap_percentage=window_overlap_percentage
+    )
 
     def _encode_fn(x: torch.Tensor) -> torch.Tensor:
         # 'Hack' to retain tiled patch inputs in the same batch in CLIP.
         original_shape = x.shape
         
-        if window_size is not None:
+        if use_windowed_embeddings:
             # Flatten
             single_dim = original_shape[0] * original_shape[1]
             x = x.view(single_dim, *original_shape[2:])
         
         out = model.encode_image(x)
         
-        if window_size is not None:
+        if use_windowed_embeddings:
             # Unflatten
-            out = out.view(original_shape[0], original_shape[1], *out[1:])
+            out = out.view(original_shape[0], original_shape[1], *out.shape[1:])
 
         return out
 
