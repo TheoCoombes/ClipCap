@@ -1,4 +1,4 @@
-from clipcap.encoders import EncoderConfig
+from clipcap.encoders.config import EncoderConfig
 
 from dataclasses import dataclass, asdict
 from argparse import Namespace

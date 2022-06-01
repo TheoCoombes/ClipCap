@@ -10,7 +10,9 @@ from clipcap.preprocess.args import add_preprocess_args
 from clipcap.preprocess.mapper import EncoderMapper
 from clipcap.preprocess.runner import Runner
 
-from clipcap.encoders import EncoderConfig, add_encoder_args, get_encoder_from_config
+from clipcap.encoders.base import get_encoder_from_config
+from clipcap.encoders.args import add_encoder_args
+from clipcap.encoders.config import EncoderConfig
 
 
 def preprocess(args: Namespace) -> int:

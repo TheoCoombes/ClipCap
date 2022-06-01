@@ -1,5 +1,5 @@
 from clipcap.model.model import ClipCapModel, ClipCapModelPrefixOnly, get_tokenizer
-from clipcap.encoders import EncoderConfig
+from clipcap.encoders.config import EncoderConfig
 from clipcap.model.config import Config
 
 from typing import Union, Tuple, Callable

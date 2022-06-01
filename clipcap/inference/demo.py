@@ -1,7 +1,8 @@
-from clipcap.encoders import get_encoder_from_args, add_encoder_args
 from clipcap.inference.args import add_inference_args
 from clipcap.inference.base import generate_beam
-from clipcap.model import load
+
+from clipcap.encoders.base import get_encoder_from_model
+from clipcap.model.load import load
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
 
@@ -18,7 +19,7 @@ def inference_demo(args: Namespace) -> int:
     else:
         text_prefix_tokens = None
 
-    encode_method, sample_processor = get_encoder_from_args(args)
+    encode_method, sample_processor = get_encoder_from_model(model, device=args.device)
 
     sample = sample_processor(args.sample_path).unsqueeze(0).to(args.device)
     embeds = encode_method(sample)
@@ -42,7 +43,6 @@ def run_inference_demo() -> int:
     """
     parser = ArgumentParser(description=__doc__, formatter_class=ArgumentDefaultsHelpFormatter)
     parser = add_inference_args(parser)
-    parser = add_encoder_args(parser)
     args = parser.parse_args()
     return inference_demo(args)
 
