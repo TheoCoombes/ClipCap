@@ -144,6 +144,9 @@ class CLAPModel(Module):
         if self.normalize_embeddings:
             out /= out.norm(dim=-1, keepdim=True)
         
+        out = self.model.audio_projection(out)
+        out = self.model.audio_transform(out)
+        
         if self.use_windowed_embeddings:
             # Unflatten
             out = out.view(original_shape[0], original_shape[1], *out.shape[1:])
