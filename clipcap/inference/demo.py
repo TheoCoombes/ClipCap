@@ -1,5 +1,5 @@
 from clipcap.inference.args import add_inference_args
-from clipcap.inference.base import generate_beam
+from clipcap.inference.base import generate_nucleus_sampling
 
 from clipcap.encoders.base import get_encoder_from_model
 from clipcap.model.load import load
@@ -29,7 +29,7 @@ def inference_demo(args: Namespace) -> int:
         embeds /= embeds.norm(dim=-1, keepdim=True)
         prefix = model.transformer_mapper(embeds)
 
-    captions = generate_beam(
+    captions = generate_nucleus_sampling(
         model, tokenizer, prefix,
         number_to_generate=args.number_to_generate,
         text_prefix_tokens=text_prefix_tokens
