@@ -1,7 +1,7 @@
 from clipcap.model import ClipCapModel, ClipCapModelPrefixOnly
 
-import torch.nn.functional as nnf
 from typing import Union, Callable, Optional
+import torch.nn.functional as nnf
 import torch
 
 # From https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
@@ -51,10 +51,6 @@ def sentence_length_penalty_apply(logits: torch.Tensor, tokens: torch.Tensor, st
     
     return logits
 
-
-# ---
-
-
 def generate_beam(
     model: Union[ClipCapModel, ClipCapModelPrefixOnly],
     tokenizer: Callable,
@@ -63,9 +59,11 @@ def generate_beam(
     text_prefix_tokens: Optional[torch.Tensor] = None,
     beam_size: int = 5,
     entry_length: int = 67,
-    temperature: float = 1.0
+    temperature: float = 1.0,
+    stop_token: str = '.'
 ):
-    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
+
+    stop_token = tokenizer.encode_text(stop_token)[0]
     tokens = None
     scores = None
 
@@ -78,7 +76,7 @@ def generate_beam(
             text_prefix_embed = model.language_model.get_input_embeddings()(text_prefix_tokens)
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
-        for _ in range(number_to_generate):
+        for i in range(number_to_generate):
             for _ in range(entry_length):
                 outputs = model.language_model(inputs_embeds=embeds)
                 logits = outputs.logits
@@ -143,14 +141,11 @@ def generate_nucleus_sampling(
     entry_length: int = 67,
     top_p: float = 0.8,
     temperature: float = 1.0,
+    stop_token: str = '.'
 ):
 
-    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
-    top_k = None
+    stop_token = tokenizer.encode_text(stop_token)[0]
     tokens = None
-    final_embeds = None
-
-    filter_value = -float('inf')
     generations = []
 
     with torch.no_grad():
@@ -158,13 +153,9 @@ def generate_nucleus_sampling(
             text_prefix_embed = model.language_model.get_input_embeddings()(text_prefix_tokens)
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
-        for _ in range(number_to_generate):
+        for i in range(number_to_generate):
             for _ in range(entry_length):
-                if final_embeds is not None:
-                    outputs = model.language_model(inputs_embeds=final_embeds)
-                else:
-                    outputs = model.language_model(inputs_embeds=embeds)
-                
+                outputs = model.language_model(inputs_embeds=embeds)
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
 
@@ -175,14 +166,14 @@ def generate_nucleus_sampling(
                     
                 p, largest_p_idx = nnf.softmax(logits, dim=-1).topk(top_k, dim=-1)
                 cumulative_p = p.cumsum(dim=-1)
-                threshold_repeated = top_p + torch.zeros((len(p), 1)).to(embeds.device)
+                threshold_repeated = top_p + torch.zeros((len(p), 1)).to("cuda:4")
                 idx = torch.searchsorted(cumulative_p, threshold_repeated).clip(max=top_k-1).squeeze()
                 cutoffs = cumulative_p[torch.arange(len(cumulative_p)), idx]
                 censored_p = (cumulative_p <= cutoffs[:, None]) * p
                 renormalized_p = censored_p / censored_p.sum(dim=-1, keepdims=True)
 
                 final_p = torch.zeros_like(logits)
-                row_idx = torch.arange(len(p)).unsqueeze(1).repeat(1,top_k).to(embeds.device)
+                row_idx = torch.arange(len(p)).unsqueeze(1).repeat(1,top_k).to("cuda:4")
                 final_p[row_idx, largest_p_idx] = renormalized_p.to(final_p.dtype)
 
                 next_token = torch.multinomial(final_p, num_samples=1)
@@ -194,19 +185,88 @@ def generate_nucleus_sampling(
                 else:
                     tokens = torch.cat((tokens, next_token), dim=1)
                 
-                if final_embeds is not None:
-                    final_embeds = torch.cat((final_embeds, next_token_embed), dim=1)
-                else:
-                    final_embeds = torch.cat((embeds, next_token_embed), dim=1)
+                embeds = torch.cat((embeds, next_token_embed), dim=1)
                 
                 if stop_token == next_token.item():
                     break
 
-            print(tokens, tokens.shape)
             output_list = list(tokens.squeeze().cpu().numpy())
             output_text = tokenizer.decode(output_list)
         
             generations.append(output_text)
+    
+    return generations
+
+
+def generate_no_beam(
+    model: Union[ClipCapModel, ClipCapModelPrefixOnly],
+    tokenizer: Callable,
+    embeds: torch.Tensor,
+    text_prefix_tokens: Optional[torch.Tensor] = None,
+    entry_length: int = 67,
+    temperature: float = 1.0,
+    stop_token: str = '.',
+    repetition_penalty: float = 1.2,
+    desired_sentence_length: int = 50,
+    sentence_length_factor: float = 1.0,
+):
+
+    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
+    print(f'Generate_no_beam (repetition_penalty: {repetition_penalty:.2f})')
+    generations = []
+
+    with torch.no_grad():
+        if text_prefix_tokens is not None:
+            text_prefix_embed = model.language_model.get_input_embeddings()(text_prefix_tokens)
+            embeds = torch.cat((embeds, text_prefix_embed), dim=1)
+
+        embeds_init = embeds
+        for top_p in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
             tokens = None
+            embeds = embeds_init
+            for _ in range(entry_length):
+                # Get logits from a forward pass
+                outputs = model.language_model(inputs_embeds=embeds)
+                logits = outputs.logits
+
+                # Assume batch size of 1
+                assert logits.shape[0] == 1
+                logits = logits[0, -1, :]
+
+                # Apply the repetition penalty
+                if repetition_penalty != 1.0 and tokens is not None:
+                    tokens1 = tokens[0, :] # assuming batch size of 1
+                    logits = repetition_penalty_apply(logits, tokens1, repetition_penalty)
+
+                # Apply temperature and filter
+                logits = logits / (temperature if temperature > 0 else 1.0)
+                logits = top_k_top_p_filtering(logits, top_p=top_p, top_k=0.0)
+
+                # Apply sentence length penalty.
+                if tokens is not None:
+                    tokens1 = tokens[0, :] # assuming batch size of 1
+                    logits = sentence_length_penalty_apply(
+                        logits, tokens1, stop_token, tokens.shape[1],
+                        desired_sentence_length, sentence_length_factor
+                    )
+
+                # Get the next token and its embedding
+                probabilities = nnf.softmax(logits, dim=-1)
+                next_token = torch.multinomial(probabilities, 1).unsqueeze(0)
+                next_token_embed = model.language_model.get_input_embeddings()(next_token)
+
+                if tokens is None:
+                    tokens = next_token
+                else:
+                    tokens = torch.cat((tokens, next_token), dim=1)
+                embeds = torch.cat((embeds, next_token_embed), dim=1)
+                
+                if stop_token == next_token.item():
+                    break
+
+            output_list = list(tokens.squeeze().cpu().numpy())
+            output_text = tokenizer.decode(output_list)
+        
+            generations.append(output_text)
     
     return generations

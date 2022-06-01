@@ -15,6 +15,7 @@ def load(model_path: str, config_path: str, device: str = "cpu",
     if from_checkpoint and raw_config["training_config"] is not None:
         raw_config["training_config"] = None
     
+    raw_config["encoder_config"]["normalize_embeddings"] = True # TODO patch
     raw_config["encoder_config"] = EncoderConfig(**raw_config["encoder_config"])
     config = Config(**raw_config)
     
