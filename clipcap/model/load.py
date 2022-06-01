@@ -10,6 +10,7 @@ def load(model_path: str, config_path: str, device: str = "cpu",
          from_checkpoint: bool = False) -> Tuple[Union[ClipCapModel, ClipCapModelPrefixOnly], Callable]:
     with open(config_path, "r") as f:
         raw_config = yaml.safe_load(f)
+    print(raw_config)
     
     # Remove old training config data from past training runs.
     if from_checkpoint and raw_config["training_config"] is not None:
