@@ -102,7 +102,7 @@ class CLIPTransform(object):
 
         return image_tensor
 
-class ClipModel(Module):
+class CLIPModel(Module):
     def __init__(self, model: Module, normalize_embeddings: bool = False, use_windowed_embeddings: bool = False) -> None:
         super().__init__()
         self.model = model
@@ -142,7 +142,7 @@ def get_clip_encoder(encoder_model_variant: str, window_size: Optional[int] = No
         window_overlap_percentage=window_overlap_percentage
     )
 
-    model = ClipModel(
+    model = CLIPModel(
         clip_model,
         normalize_embeddings=normalize_embeddings,
         use_windowed_embeddings=use_windowed_embeddings

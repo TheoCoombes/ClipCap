@@ -124,7 +124,7 @@ class CLAPTransform(object):
         
         return new_waveform
 
-class ClapModel(Module):
+class CLAPModel(Module):
     def __init__(self, model: Module, normalize_embeddings: bool = False, use_windowed_embeddings: bool = False) -> None:
         super().__init__()
         self.model = model
@@ -177,7 +177,7 @@ def get_clap_encoder(model_path: str, window_size: Optional[int] = None, normali
     clap_model = clap_model.eval()
     clap_model = clap_model.to(device)
 
-    model = ClapModel(
+    model = CLAPModel(
         clap_model,
         normalize_embeddings=normalize_embeddings,
         use_windowed_embeddings=use_windowed_embeddings
