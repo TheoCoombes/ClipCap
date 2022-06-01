@@ -59,11 +59,10 @@ def generate_beam(
     text_prefix_tokens: Optional[torch.Tensor] = None,
     beam_size: int = 5,
     entry_length: int = 67,
-    temperature: float = 1.0,
-    stop_token: str = '.'
+    temperature: float = 1.0
 ):
 
-    stop_token = tokenizer.encode(stop_token)[0]
+    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
     tokens = None
     scores = None
 
@@ -140,11 +139,10 @@ def generate_nucleus_sampling(
     text_prefix_tokens: Optional[torch.Tensor] = None,
     entry_length: int = 67,
     top_p: float = 0.8,
-    temperature: float = 1.0,
-    stop_token: str = '.'
+    temperature: float = 1.0
 ):
 
-    stop_token = tokenizer.encode(stop_token)[0]
+    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
     tokens = None
     generations = []
 
