@@ -1,5 +1,4 @@
 from pytorch_lightning import Callback, Trainer
-from typing import Optional
 from pathlib import Path
 import yaml
 

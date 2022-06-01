@@ -1,3 +1,5 @@
+from clipcap.encoders import EncoderConfig
+
 from dataclasses import dataclass, asdict
 from argparse import Namespace
 from typing import Optional
@@ -30,13 +32,9 @@ class Config:
     projection_length: int = 10
     transformer_layers: int = 8
     transformer_attention_heads: int = 16
-
-    encoder_embedding_size: int = 768
-    use_windowed_embeddings: bool = False
-    window_size: Optional[int] = None # (4 * 4)
-    window_overlap_percentage: float = 0.0
     use_positional_embeddings: bool = True
 
+    encoder_config: Optional[EncoderConfig] = None
     training_config: Optional[TrainingConfig] = None
 
     def to_dict(self) -> dict:
@@ -51,10 +49,8 @@ class Config:
             projection_length = args.projection_length,
             transformer_layers = args.transformer_layers,
             transformer_attention_heads = args.transformer_attention_heads,
-            encoder_embedding_size = args.encoder_embedding_size,
-            use_windowed_embeddings = args.use_windowed_embeddings,
-            window_size = args.window_size,
             use_positional_embeddings = args.use_positional_embeddings,
+            encoder_config = None,
             training_config = None
         )
 

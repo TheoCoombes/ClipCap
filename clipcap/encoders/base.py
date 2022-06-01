@@ -1,8 +1,10 @@
 from clipcap.encoders.clip import get_clip_encoder
 from clipcap.encoders.clap import get_clap_encoder
+from clipcap.encoders.config import EncoderConfig
 
-from typing import Tuple, Callable, Optional
-from argparse import Namespace
+from clipcap.model import ClipCapModel, ClipCapModelPrefixOnly
+
+from typing import Tuple, Callable, Optional, Union
 from torch.nn import Module
 
 def get_encoder(encoder_model_name: str, encoder_model_variant: str, window_size: Optional[int] = None, 
@@ -22,11 +24,14 @@ def get_encoder(encoder_model_name: str, encoder_model_variant: str, window_size
         raise ValueError(f"invalid encoder name: '{encoder_model_name}'")
 
 
-def get_encoder_from_args(args: Namespace) -> Tuple[Module, Callable]:
-    if args.encoder_model_name == "clip":
-        args.encoder_model_variant = args.encoder_model_variant.replace("_", "/")
+def get_encoder_from_config(config: EncoderConfig, device: str = "cpu") -> Tuple[Module, Callable]:
+    if config.encoder_model_name == "clip":
+        config.encoder_model_variant = config.encoder_model_variant.replace("_", "/")
     
     return get_encoder(
-        args.encoder_model_name, args.encoder_model_variant, window_size=args.window_size,
-        window_overlap_percentage=args.window_overlap_percentage, device=args.device
+        config.encoder_model_name, config.encoder_model_variant, window_size=config.window_size,
+        window_overlap_percentage=config.window_overlap_percentage, device=device
     )
+
+def get_encoder_from_model(model: Union[ClipCapModel, ClipCapModelPrefixOnly], device: str = "cpu") -> Tuple[Module, Callable]:
+    return get_encoder_from_config(model.hparams.encoder_config, device=device)

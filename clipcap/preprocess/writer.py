@@ -1,8 +1,17 @@
 """writer module saves embeddings"""
 
+from clipcap.encoders import EncoderConfig
+
 from io import BytesIO
 import fsspec
 import math
+import yaml
+
+def save_config(config: EncoderConfig, output_folder: str) -> None:
+    fs, output_folder = fsspec.core.url_to_fs(output_folder)
+
+    with fs.open(output_folder + "/encoder_config.yaml", "w") as f:
+        yaml.dump(config.to_dict(), f, default_flow_style=False)
 
 
 class OutputSink:

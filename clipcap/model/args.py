@@ -38,31 +38,11 @@ def add_model_args(parser: ArgumentParser) -> ArgumentParser:
         default=16,
         help="Number of attention heads in the mapping transformer.",
     )
-
-    windowed = parser.add_argument_group('windowed')
-    windowed.add_argument(
-        "--use-windowed-embeddings",
-        type=bool,
-        default=False,
-        help="Whether or not to use multiple encoder outputs / full ViT. For CLIP, this splits the image into a sequence of tiled embeddings. For CLAP, this splits the audio into a fixed amount of segments.",
-    )
-    windowed.add_argument(
-        "--window-size",
-        type=int,
-        default=None, # (4 * 4)
-        help="[optional] This should be the same as used in the preprocessor. This is equal to `tensor.shape[1]` of the preprocessed dataset.",
-    )
-    windowed.add_argument(
-        "--window-overlap-percentage",
-        type=float,
-        default=0.0,
-        help="[optional] If enabled, the percentage each window should overlap into each other. Default 0 percent / non-overlapping.",
-    )
-    windowed.add_argument(
+    model.add_argument(
         "--use-positional-embeddings",
         type=bool,
         default=True,
-        help="Use positional embeddings for windowed sequence in the mapping transformer.",
+        help="If windowed embeddings were enabled in preprocessing, use positional embeddings for windowed sequence in the mapping transformer.",
     )
 
     return parser

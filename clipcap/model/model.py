@@ -24,14 +24,14 @@ class ClipCapModel(pl.LightningModule):
                 lm_embedding_size=self.lm_embedding_size,
                 prefix_length=self.hparams.prefix_length,
                 projection_length=self.hparams.projection_length,
-                window_size=self.hparams.window_size,
+                window_size=self.hparams.encoder_config.window_size,
                 use_pos_embeddings=self.hparams.use_positional_embeddings,
                 num_heads=self.hparams.transformer_attention_heads,
                 num_layers=self.hparams.transformer_layers
             )
         else:
             self.transformer_mapper = TransformerMapper(
-                encoder_embedding_size=self.hparams.encoder_embedding_size,
+                encoder_embedding_size=self.hparams.encoder_config.encoder_embedding_size,
                 lm_embedding_size=self.lm_embedding_size,
                 prefix_length=self.hparams.prefix_length,
                 projection_length=self.hparams.projection_length,

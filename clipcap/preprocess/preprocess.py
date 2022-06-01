@@ -5,12 +5,12 @@ import math
 
 from clipcap.preprocess.distributor import PysparkDistributor, SequentialDistributor
 from clipcap.preprocess.reader import folder_to_keys, FilesReader, WebdatasetReader
+from clipcap.preprocess.writer import NumpyWriter, save_config
 from clipcap.preprocess.args import add_preprocess_args
 from clipcap.preprocess.mapper import EncoderMapper
-from clipcap.preprocess.writer import NumpyWriter
 from clipcap.preprocess.runner import Runner
 
-from clipcap.encoders import get_encoder_from_args, add_encoder_args
+from clipcap.encoders import EncoderConfig, add_encoder_args, get_encoder_from_config
 
 
 def preprocess(args: Namespace) -> int:
@@ -25,7 +25,9 @@ def preprocess(args: Namespace) -> int:
     else:
         input_dataset = args.input_dataset
 
-    encoder_model, sample_processor = get_encoder_from_args(args)
+    encoder_config = EncoderConfig.from_args(args)
+    encoder_model, sample_processor = get_encoder_from_config(encoder_config, device=args.device)
+    save_config(encoder_config, args.output_folder)
     
     if args.output_partition_count is None:
         if args.input_format == "files":
