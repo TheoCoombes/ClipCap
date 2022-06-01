@@ -16,7 +16,7 @@ def inference_demo(args: Namespace) -> int:
     )
 
     if args.text_prefix is not None:
-        text_prefix_tokens = tokenizer.encode(args.text_prefix, return_tensors="pt").unsqueeze(0)
+        text_prefix_tokens = tokenizer.encode(args.text_prefix, return_tensors="pt").unsqueeze(0).to(args.device)
     else:
         text_prefix_tokens = None
 
