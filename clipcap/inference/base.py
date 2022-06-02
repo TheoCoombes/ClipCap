@@ -2,6 +2,7 @@ from clipcap.model import ClipCapModel, ClipCapModelPrefixOnly
 
 from typing import Union, Callable, Optional
 import torch.nn.functional as nnf
+import random
 import torch
 
 # From https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf317
@@ -201,6 +202,7 @@ def generate_no_beam(
     model: Union[ClipCapModel, ClipCapModelPrefixOnly],
     tokenizer: Callable,
     embeds: torch.Tensor,
+    number_to_generate: int = 5,
     text_prefix_tokens: Optional[torch.Tensor] = None,
     entry_length: int = 67,
     temperature: float = 1.0,
@@ -219,7 +221,8 @@ def generate_no_beam(
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
         embeds_init = embeds
-        for top_p in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]:
+        for _ in range(number_to_generate):
+            top_p = random.choice([0.85, 0.9, 0.95])
             tokens = text_prefix_tokens
             embeds = embeds_init
             for _ in range(entry_length):
