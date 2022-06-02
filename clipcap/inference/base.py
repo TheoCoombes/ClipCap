@@ -238,21 +238,21 @@ def generate_no_beam(
                         logits = logits[0, -1, :]
 
                         # Apply the repetition penalty
-                        if repetition_penalty != 1.0 and tokens is not None:
-                            tokens1 = tokens[0, :] # assuming batch size of 1
-                            logits = repetition_penalty_apply(logits, tokens1, repetition_penalty)
+                        # if repetition_penalty != 1.0 and tokens is not None:
+                        #     tokens1 = tokens[0, :] # assuming batch size of 1
+                        #     logits = repetition_penalty_apply(logits, tokens1, repetition_penalty)
 
                         # Apply temperature and filter
                         logits = logits / (temperature if temperature > 0 else 1.0)
                         logits = top_k_top_p_filtering(logits, top_p=top_p, top_k=top_k)
 
                         # Apply sentence length penalty.
-                        if tokens is not None:
-                            tokens1 = tokens[0, :] # assuming batch size of 1
-                            logits = sentence_length_penalty_apply(
-                                logits, tokens1, stop_token, tokens.shape[1],
-                                desired_sentence_length, sentence_length_factor
-                            )
+                        # if tokens is not None:
+                        #     tokens1 = tokens[0, :] # assuming batch size of 1
+                        #     logits = sentence_length_penalty_apply(
+                        #         logits, tokens1, stop_token, tokens.shape[1],
+                        #         desired_sentence_length, sentence_length_factor
+                        #     )
 
                         # Get the next token and its embedding
                         probabilities = nnf.softmax(logits, dim=-1)
