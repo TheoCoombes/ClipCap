@@ -17,6 +17,7 @@ import pandas as pd
 import numpy as np
 import torch
 import json
+import tqdm
 
 _DEFAULT_REFERENCE_CAPTION_COLUMNS = "caption_reference_{{01..{:02d}}}"
 _DEFAULT_PREDICTION_COLUMN = "caption_predicted"
@@ -40,7 +41,7 @@ def eval(args: Namespace) -> int:
     dataset = EvalDataset(sample_processor, args.sample_path)
     predictions = []
 
-    for filename, sample in dataset:
+    for filename, sample in tqdm.tqdm(dataset, desc="eval"):
         sample = sample.unsqueeze(0).to(args.device)
     
         with torch.no_grad():
