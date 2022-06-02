@@ -1,5 +1,5 @@
 pytorch_lightning
-git+https://github.com/TheoCoombes/embedding-reader.git@patch-1
+# git+https://github.com/TheoCoombes/embedding-reader.git@patch-1
 transformers
 scikit-image
 matplotlib
