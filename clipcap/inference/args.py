@@ -72,7 +72,7 @@ def add_inference_args(parser: ArgumentParser) -> ArgumentParser:
     inference.add_argument(
         "--desired-sentence-length",
         type=int,
-        default=77,
+        default=50,
         help="Inference settings: desired sentence length.",
     )
     
