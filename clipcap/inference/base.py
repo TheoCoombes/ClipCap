@@ -223,7 +223,7 @@ def generate_no_beam(
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
         embeds_init = embeds
-        for top_p in [0.7, 0.8, 0.9] * 3:
+        for _ in top_p in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0] * 2:
             tokens = text_prefix_tokens
             embeds = embeds_init
             for _ in range(entry_length):
