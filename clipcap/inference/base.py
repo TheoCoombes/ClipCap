@@ -76,7 +76,7 @@ def generate_beam(
             text_prefix_embed = model.language_model.get_input_embeddings()(text_prefix_tokens)
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
-        for top_p in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0] * 2:
+        for _ in range(number_to_generate):
             for _ in range(entry_length):
                 outputs = model.language_model(inputs_embeds=embeds)
                 logits = outputs.logits
@@ -223,7 +223,7 @@ def generate_no_beam(
             embeds = torch.cat((embeds, text_prefix_embed), dim=1)
 
         embeds_init = embeds
-        for _ in range(number_to_generate):
+        for top_p in [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0] * 2:
             tokens = text_prefix_tokens
             embeds = embeds_init
             for _ in range(entry_length):
