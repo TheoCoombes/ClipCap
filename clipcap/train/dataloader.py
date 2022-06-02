@@ -36,7 +36,7 @@ class EmbedDataset(IterableDataset):
             meta_columns=['caption'],
         )
 
-        self.encoder_embedding_size = self.reader.dimension # [-1] TODO PR
+        self.encoder_embedding_size = self.reader.dimension[-1]
     
     def __iter__(self):
         for batch, metadata in self.reader(
