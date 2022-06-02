@@ -53,8 +53,8 @@ def add_inference_args(parser: ArgumentParser) -> ArgumentParser:
     )
     inference.add_argument(
         "--top-k",
-        type=float,
-        default=0.0,
+        type=int,
+        default=0,
         help="Inference settings: top_k.",
     )
     inference.add_argument(
