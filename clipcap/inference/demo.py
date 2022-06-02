@@ -46,6 +46,7 @@ def inference_demo(args: Namespace) -> int:
     with torch.no_grad():
         text_features = encode_method.model.encode_text(caption_tokens)
         text_features /= text_features.norm(dim=-1, keepdim=True)
+        text_features = encode_method.model.text_transform(text_features)
 
         similarities = (media_features @ text_features.T)
         mean_similarity = float(torch.mean(similarities).cpu())
