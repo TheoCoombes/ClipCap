@@ -47,15 +47,16 @@ def inference_demo(args: Namespace) -> int:
         text_features = encode_method.model.encode_text(caption_tokens)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        similarity = (media_features @ text_features.T).softmax(dim=-1)
-        _, indices = similarity[0].topk(1)
+        similarities = (media_features @ text_features.T)
+        mean_similarity = torch.mean(similarities)
+        _, indices = similarities.softmax(dim=-1)[0].topk(1)
 
     caption_idx = indices[0]
     caption = captions[caption_idx]
 
     print(captions)
-    print()
-    print(caption)
+    print("mean sim", mean_similarity)
+    print("best", caption)
     
     return 0
 
