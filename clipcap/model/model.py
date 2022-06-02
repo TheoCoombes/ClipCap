@@ -25,7 +25,7 @@ class ClipCapModel(pl.LightningModule):
                 lm_embedding_size=self.lm_embedding_size,
                 prefix_length=self.config.prefix_length,
                 projection_length=self.config.projection_length,
-                window_size=self.config.encoder_config.window_size,
+                window_size=(self.config.encoder_config.window_size + 1),
                 use_pos_embeddings=self.config.use_positional_embeddings,
                 num_heads=self.config.transformer_attention_heads,
                 num_layers=self.config.transformer_layers
