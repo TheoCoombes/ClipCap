@@ -30,17 +30,14 @@ def inference_demo(args: Namespace) -> int:
         media_features = encode_method(sample)
         prefix = model.transformer_mapper(media_features)
 
-    captions = generate_no_beam(
+    captions = generate_nucleus_sampling(
         model, tokenizer, prefix,
         number_to_generate=args.number_to_generate,
         text_prefix_tokens=text_prefix_tokens,
         top_p=args.top_p,
         top_k=args.top_k,
-        temperature=args.temperature,
-        repetition_penalty=args.repetition_penalty,
-        desired_sentence_length=args.desired_sentence_length
+        temperature=args.temperature
     )
-
 
     caption_tokens = tokenize(captions).to(args.device)
 
