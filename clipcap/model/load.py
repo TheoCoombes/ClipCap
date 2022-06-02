@@ -31,7 +31,7 @@ def load(model_path: str, config_path: str, device: str = "cpu",
     if from_checkpoint:
         state_dict = state_dict["state_dict"]
     
-    model.load_state_dict(state_dict)
+    model.load_state_dict(state_dict, strict=False)
     
     # Set to eval and load onto device.
     model = model.eval()
