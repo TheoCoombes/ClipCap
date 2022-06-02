@@ -45,19 +45,21 @@ def inference_demo(args: Namespace) -> int:
 
     with torch.no_grad():
         text_features = encode_method.model.encode_text(caption_tokens)
+
         text_features /= text_features.norm(dim=-1, keepdim=True)
-        text_features = encode_method.model.text_transform(text_features)
+        media_features /= media_features.norm(dim=-1, keepdim=True)
 
-        similarities = (media_features @ text_features.T)
-        mean_similarity = float(torch.mean(similarities).cpu())
-        _, indices = similarities.softmax(dim=-1)[0].topk(1)
+        similarities = text_features.cpu().numpy() @ media_features.cpu().numpy().T
+        mean_similarity = float(torch.mean(similarities))
+        best_idx = int(torch.argmax(similarities))
+        similarities = similarities.tolist()
 
-    caption_idx = indices[0]
-    caption = captions[caption_idx]
-
-    print(captions)
+        
+    best = captions[best_idx]
+    for caption, similarity in zip(captions, similarities):
+        print("sim", similarity, "caption", caption)
     print("mean sim", mean_similarity)
-    print("best", caption)
+    print("best", best)
     
     return 0
 
