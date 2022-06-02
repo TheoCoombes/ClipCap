@@ -21,7 +21,7 @@ class ClipCapModel(pl.LightningModule):
 
         if self.config.encoder_config.use_windowed_embeddings:
             self.transformer_mapper = TransformerMapperWindowed(
-                encoder_embedding_size=self.config.encoder_embedding_size,
+                encoder_embedding_size=self.config.encoder_config.encoder_embedding_size,
                 lm_embedding_size=self.lm_embedding_size,
                 prefix_length=self.config.prefix_length,
                 projection_length=self.config.projection_length,
