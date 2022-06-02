@@ -6,6 +6,7 @@ from clipcap.model.load import load
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
 from open_clip import tokenize
+import numpy as np
 import torch
 
 def inference_demo(args: Namespace) -> int:
@@ -50,8 +51,8 @@ def inference_demo(args: Namespace) -> int:
         media_features /= media_features.norm(dim=-1, keepdim=True)
 
         similarities = text_features.cpu().numpy() @ media_features.cpu().numpy().T
-        mean_similarity = float(torch.mean(similarities))
-        best_idx = int(torch.argmax(similarities))
+        mean_similarity = float(np.mean(similarities))
+        best_idx = int(np.argmax(similarities))
         similarities = similarities.tolist()
 
         
