@@ -205,7 +205,6 @@ def generate_no_beam(
     model: Union[ClipCapModel, ClipCapModelPrefixOnly],
     tokenizer: Callable,
     embeds: torch.Tensor,
-    number_to_generate: int = 5,
     text_prefix_tokens: Optional[torch.Tensor] = None,
     top_p: float = 0.9,
     top_k: float = 0.0,

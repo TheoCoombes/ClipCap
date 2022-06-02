@@ -11,9 +11,10 @@ from clipcap.eval.metrics import evaluate_metrics
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, Namespace
 from typing import Tuple, Union, Callable
 from braceexpand import braceexpand
-from random import randint
+from open_clip import tokenize
 from pprint import pprint
 import pandas as pd
+import numpy as np
 import torch
 import json
 
@@ -43,16 +44,25 @@ def eval(args: Namespace) -> int:
         sample = sample.unsqueeze(0).to(args.device)
     
         with torch.no_grad():
-            embeds = encode_method(sample)
-            prefix = model.transformer_mapper(embeds)
+            media_features = encode_method(sample)
+            prefix = model.transformer_mapper(media_features)
 
         captions = generate_no_beam(
-            model, tokenizer, prefix
+            model, tokenizer, prefix,
         )
 
-        caption = captions[-randint(1, 3)]
-        print(filename)
-        print(caption)
+        caption_tokens = tokenize(captions).to(args.device)
+
+        with torch.no_grad():
+            text_features = encode_method.model.encode_text(caption_tokens)
+
+            text_features /= text_features.norm(dim=-1, keepdim=True)
+            media_features /= media_features.norm(dim=-1, keepdim=True)
+
+            similarities = text_features.cpu().numpy() @ media_features.cpu().numpy().T
+        
+        best_idx = int(np.argmax(similarities))
+        caption = captions[best_idx]
         
         predictions.append({
             _DEFAULT_FILENAME_COLUMN: filename,
