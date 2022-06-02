@@ -204,6 +204,8 @@ def generate_no_beam(
     embeds: torch.Tensor,
     number_to_generate: int = 5,
     text_prefix_tokens: Optional[torch.Tensor] = None,
+    top_p: float = 0.9,
+    top_k: float = 0.0,
     entry_length: int = 67,
     temperature: float = 1.0,
     repetition_penalty: float = 1.2,
@@ -222,7 +224,6 @@ def generate_no_beam(
 
         embeds_init = embeds
         for _ in range(number_to_generate):
-            top_p = random.choice([0.85, 0.9, 0.95])
             tokens = text_prefix_tokens
             embeds = embeds_init
             for _ in range(entry_length):
@@ -241,7 +242,7 @@ def generate_no_beam(
 
                 # Apply temperature and filter
                 logits = logits / (temperature if temperature > 0 else 1.0)
-                logits = top_k_top_p_filtering(logits, top_p=top_p, top_k=0.0)
+                logits = top_k_top_p_filtering(logits, top_p=top_p, top_k=top_k)
 
                 # Apply sentence length penalty.
                 if tokens is not None:

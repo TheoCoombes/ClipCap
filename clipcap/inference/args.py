@@ -45,6 +45,36 @@ def add_inference_args(parser: ArgumentParser) -> ArgumentParser:
         default=None,
         help="Add a textual prefix to the generated captions (useful for VQA tasks), i.e. 'Q: What is the man doing? A:'.",
     )
+    inference.add_argument(
+        "--top-p",
+        type=float,
+        default=0.9,
+        help="Inference settings: top_p.",
+    )
+    inference.add_argument(
+        "--top-k",
+        type=float,
+        default=0.0,
+        help="Inference settings: top_k.",
+    )
+    inference.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="Inference settings: temperature.",
+    )
+    inference.add_argument(
+        "--repetition-penalty",
+        type=float,
+        default=1.2,
+        help="Inference settings: sentence repeititon penalty.",
+    )
+    inference.add_argument(
+        "--desired-sentence-length",
+        type=int,
+        default=77,
+        help="Inference settings: desired sentence length.",
+    )
     
 
     return parser

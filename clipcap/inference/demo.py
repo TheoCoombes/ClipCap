@@ -32,7 +32,12 @@ def inference_demo(args: Namespace) -> int:
     captions = generate_no_beam(
         model, tokenizer, prefix,
         number_to_generate=args.number_to_generate,
-        text_prefix_tokens=text_prefix_tokens
+        text_prefix_tokens=text_prefix_tokens,
+        top_p=args.top_p,
+        top_k=args.top_k,
+        temperature=args.temperature,
+        repetition_penalty=args.repetition_penalty,
+        desired_sentence_length=args.desired_sentence_length
     )
 
 
