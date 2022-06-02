@@ -48,7 +48,7 @@ def inference_demo(args: Namespace) -> int:
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
         similarities = (media_features @ text_features.T)
-        mean_similarity = torch.mean(similarities)
+        mean_similarity = float(torch.mean(similarities).cpu())
         _, indices = similarities.softmax(dim=-1)[0].topk(1)
 
     caption_idx = indices[0]
