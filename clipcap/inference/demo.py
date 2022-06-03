@@ -38,6 +38,9 @@ def inference_demo(args: Namespace) -> int:
     caption_tokens = tokenize(captions).to(args.device)
 
     with torch.no_grad():
+        if model.config.encoder_config.use_windowed_embeddings:
+            media_features = media_features[0]
+        
         text_features = encode_method.model.encode_text(caption_tokens)
 
         text_features /= text_features.norm(dim=-1, keepdim=True)
