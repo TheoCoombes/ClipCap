@@ -39,7 +39,7 @@ def inference_demo(args: Namespace) -> int:
 
     with torch.no_grad():
         if model.config.encoder_config.use_windowed_embeddings:
-            media_features = media_features[0]
+            media_features = media_features[0].unsqueeze(0)
         
         text_features = encode_method.model.encode_text(caption_tokens)
 
