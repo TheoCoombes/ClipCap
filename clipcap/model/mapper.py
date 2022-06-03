@@ -146,6 +146,7 @@ class TransformerMapperWindowed(nn.Module):
             self.pos_embeddings = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        print(x.shape)
         x = self.linear(x).view(x.shape[0], (self.window_size * self.projection_length), -1)
 
         if self.pos_embeddings is not None:
