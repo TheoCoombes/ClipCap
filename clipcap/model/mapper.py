@@ -141,7 +141,7 @@ class TransformerMapperWindowed(nn.Module):
         self.prefix_const = nn.Parameter(torch.randn(prefix_length, lm_embedding_size), requires_grad=True)
         
         if use_pos_embeddings:
-            self.pos_embeddings = nn.Parameter(torch.randn(window_size, lm_embedding_size), requires_grad=True)
+            self.pos_embeddings = nn.Parameter(torch.randn((self.window_size * self.projection_length), lm_embedding_size), requires_grad=True)
         else:
             self.pos_embeddings = None
 
@@ -150,8 +150,6 @@ class TransformerMapperWindowed(nn.Module):
 
         if self.pos_embeddings is not None:
             p = self.pos_embeddings.unsqueeze(0).expand(x.shape[0], *self.pos_embeddings.shape)
-            print(x.shape)
-            print(p.shape)
             x = x + p
 
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
