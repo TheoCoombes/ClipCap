@@ -16,7 +16,8 @@ class EmbedDataset(IterableDataset):
                  reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10, max_token_length: int = 128):
         super().__init__()
         self.tokenizer = get_tokenizer(language_model)
-        self.tokenizer.add_special_tokens({'pad_token': -1})
+        self.pad_string = self.tokenizer.decode([0])[0]
+        self.tokenizer.add_special_tokens({'pad_token': self.pad_string})
 
         self.batch_size = batch_size
         self.reader_max_piece_size = reader_max_piece_size
@@ -46,7 +47,7 @@ class EmbedDataset(IterableDataset):
             batch = torch.from_numpy(batch)
 
             captions = metadata["caption"].to_list()
-            captions = [caption + self.tokenizer.eos_token for caption in captions]
+            captions = [caption.replace(self.pad_string, ".") + self.tokenizer.eos_token for caption in captions]
             tokens = self.tokenizer.batch_encode_plus(
                 captions,
                 padding="max_length",
@@ -65,7 +66,8 @@ class EmbedDataset(IterableDataset):
 def get_dataloader(
     data_path: str = "./dataset/",
     language_model: str = "gpt2-xl",
-    batch_size: int = 256
+    batch_size: int = 256,
+    max_token_length: int = 128
 ) -> Tuple[DataLoader, int]:
     """
     Initializes an EmbedDataset class and returns the appropriate torch DataLoader along with the encoder's embedding size for training reference.
@@ -73,7 +75,8 @@ def get_dataloader(
     dataset = EmbedDataset(
         data_path=data_path,
         language_model=language_model,
-        batch_size=batch_size
+        batch_size=batch_size,
+        max_token_length=max_token_length
     )
 
     # Batching is already implemented in the EmbedDataset.
