@@ -1,6 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, get_linear_schedule_with_warmup
 from torch.nn import functional as F
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable, List
 import pytorch_lightning as pl
 import torch
 
@@ -40,20 +40,20 @@ class ClipCapModel(pl.LightningModule):
                 num_layers=self.config.transformer_layers
             )
 
-    def forward(self, tokens: torch.Tensor, embeds: torch.Tensor, mask: torch.Tensor, labels: Optional[torch.Tensor] = None):
-        embedding_text = self.language_model.get_input_embeddings()(tokens)
+    def forward(self, tokens: torch.Tensor, embeddings: torch.Tensor, mask: torch.Tensor):
+        # Get text and prefix embeddings.
+        token_embeddings = self.language_model.get_input_embeddings()(tokens)
+        prefix_projections = self.transformer_mapper(embeddings)
 
-        prefix_projections = self.transformer_mapper(embeds)
-        embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
+        # Concatenate to form LM input.
+        inputs_embeds = torch.cat((prefix_projections, token_embeddings), dim=1)
 
-        device = tokens.device
-        mask = torch.cat((torch.ones(prefix_projections.shape[:-1], dtype=torch.bool, device=device), mask), dim=1)  # adding prefix mask
-
-        if labels is not None:
-            dummy_token = torch.zeros(tokens.shape[0], self.config.prefix_length, dtype=torch.int64)
-            labels = torch.cat((dummy_token, tokens), dim=1)
+        # Create and concatenate prefix mask to caption mask.
+        prefix_mask = torch.ones(prefix_projections.shape[:-1], dtype=torch.bool, device=mask.device)
+        mask = torch.cat((prefix_mask, mask), dim=1)
         
-        out = self.language_model(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
+        # Call language model.
+        out = self.language_model(inputs_embeds=inputs_embeds, attention_mask=mask)
 
         return out
     
@@ -91,7 +91,7 @@ class ClipCapModel(pl.LightningModule):
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_config}
 
     
-    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int):
+    def training_step(self, batch: Tuple[torch.Tensor, torch.Tensor], _: int) -> torch.Tensor:
         """
         The model's main training step.
         `batch` contains a tuple of the caption's tokens and the encoder's embedding (prefix). [see the `preprocess` folder]
@@ -99,7 +99,7 @@ class ClipCapModel(pl.LightningModule):
 
         tokens, embeds = batch
 
-        # Create mask
+        # Create mask (with -1 pads)
         mask = tokens.ge(0)
         tokens[~mask] = 0
 

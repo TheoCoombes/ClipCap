@@ -18,9 +18,11 @@ def inference_demo(args: Namespace) -> int:
     )
 
     if args.text_prefix is not None:
-        text_prefix_tokens = tokenizer.encode(args.text_prefix, return_tensors="pt").to(args.device)
+        text_prefix = tokenizer.bos_token + args.text_prefix
     else:
-        text_prefix_tokens = None
+        text_prefix = tokenizer.bos_token
+
+    text_prefix_tokens = tokenizer.encode(text_prefix, return_tensors="pt").to(args.device)
 
     encode_method, sample_processor = get_encoder_from_model(model, device=args.device)
 

@@ -16,7 +16,7 @@ class EmbedDataset(IterableDataset):
                  reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10, max_token_length: int = 128):
         super().__init__()
         self.tokenizer = get_tokenizer(language_model)
-        self.tokenizer.add_special_tokens({'pad_token': self.tokenizer.eos_token})
+        self.tokenizer.add_special_tokens({'pad_token': -1})
 
         self.batch_size = batch_size
         self.reader_max_piece_size = reader_max_piece_size
@@ -43,13 +43,20 @@ class EmbedDataset(IterableDataset):
             batch_size=self.batch_size, start=0, end=self.reader.count, max_piece_size=self.reader_max_piece_size,
             parallel_pieces=self.reader_parallel_pieces, show_progress=False
         ):
-            batch = torch.tensor(batch)
+            batch = torch.from_numpy(batch)
 
             captions = metadata["caption"].to_list()
-            tokens = self.tokenizer.batch_encode_plus(captions, padding="longest", return_attention_mask=False, return_tensors="pt")["input_ids"]
+            captions = [caption + self.tokenizer.eos_token for caption in captions]
+            tokens = self.tokenizer.batch_encode_plus(
+                captions,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_token_length,
+                return_attention_mask=False,
+                return_tensors="pt"
+            )["input_ids"]
 
             yield tokens, batch
-
 
     def __len__(self) -> int:
         return math.ceil(self.reader.count / self.batch_size)

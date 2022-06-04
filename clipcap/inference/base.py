@@ -216,7 +216,6 @@ def generate_no_beam(
 ):
 
     stop_token = tokenizer.encode(tokenizer.eos_token)[0]
-    print(f'Generate_no_beam (repetition_penalty: {repetition_penalty:.2f})')
     generations = []
 
     with torch.no_grad():

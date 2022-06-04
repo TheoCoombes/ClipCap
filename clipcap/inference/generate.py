@@ -13,18 +13,28 @@ def generate(
     top_k: int = 0,
     temperature: float = 1.0,
     number_to_generate: int = 5,
-    text_prefix: Optional[str] = None
+    text_prefix: Optional[str] = None,
+    stop_token: Optional[str] = None,
 ):
     batch_size = embeddings.shape[0]
     assert batch_size == 1, "Batch size > 1 support coming soon - for now leave embeddings.shape[0] as 1."
 
     if text_prefix is not None:
-        text_prefix_tokens = tokenizer.encode(text_prefix, return_tensors="pt").expand(batch_size, -1).to(embeddings.device)
+        text_prefix = tokenizer.bos_token + text_prefix
     else:
-        text_prefix_tokens = None
+        text_prefix = tokenizer.bos_token
+
+    text_prefix_tokens = tokenizer.encode(text_prefix, return_tensors="pt").expand(batch_size, -1).to(embeddings.device)
     
     with torch.no_grad():
-        prefixes = model.transformer_mapper(embeddings)
+        token_embeddings = model.language_model.get_input_embeddings()(text_prefix_tokens)
+        prefix_projections = model.transformer_mapper(embeddings)
+    
+    inputs_embeds = torch.cat((prefix_projections, token_embeddings), dim=1)
+    attention_mask = torch.ones(inputs_embeds.shape[:2], dtype=torch.long)
+
+    # https://discuss.huggingface.co/t/how-to-generate-a-sequence-using-inputs-embeds-instead-of-input-ids/4145/3
+    decoder_input_ids = torch.ones((inputs_embeds.shape[0], 1), dtype=torch.long) * tokenizer.bos_token
 
     captions = generate_no_beam(
         model, tokenizer, prefixes,
@@ -36,6 +46,14 @@ def generate(
     )
 
     return captions
+
+# mask = tokens.ge(0)
+# tokens[~mask] = 0
+
+# prefix_projections = self.transformer_mapper(embeddings)
+
+# mask = torch.cat((torch.ones(prefix_projections.shape[:-1], dtype=torch.bool, device=device), mask), dim=1)  # adding prefix mask
+# attention_mask = torch.ones(inputs_embeds.shape[:2], dtype=torch.long)
 
 
 # caption_tokens = tokenize(captions).to(embeddings.device)
