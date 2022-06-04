@@ -70,6 +70,9 @@ def eval(args: Namespace) -> int:
             _DEFAULT_PREDICTION_COLUMN: caption
         })
     
+    with open("eval.json", "w+") as f:
+        json.dump(predictions, f)
+    
     col_list = [args.csv_filename_column, *braceexpand(args.csv_reference_caption_columns)]
     reference = pd.read_csv(args.reference_csv, usecols=col_list)
 
