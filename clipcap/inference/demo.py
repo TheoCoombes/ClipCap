@@ -1,5 +1,5 @@
 from clipcap.inference.args import add_inference_args
-from clipcap.inference.base import *
+from clipcap.inference.no_beam import generate_no_beam
 
 from clipcap.encoders.base import get_encoder_from_model
 from clipcap.model.load import load
@@ -34,7 +34,13 @@ def inference_demo(args: Namespace) -> int:
 
     captions = generate_no_beam(
         model, tokenizer, prefix,
-        text_prefix_tokens=text_prefix_tokens
+        number_to_generate=args.number_to_generate,
+        text_prefix_tokens=text_prefix_tokens,
+        top_p=args.top_p,
+        top_k=args.top_k,
+        temperature=args.temperature,
+        repetition_penalty=args.repetition_penalty,
+        desired_sentence_length=args.desired_sentence_length,
     )
 
     caption_tokens = tokenize(captions).to(args.device)
@@ -44,11 +50,18 @@ def inference_demo(args: Namespace) -> int:
             media_features = media_features[0][0].unsqueeze(0)
         
         text_features = encode_method.model.encode_text(caption_tokens)
-
         text_features /= text_features.norm(dim=-1, keepdim=True)
+
         media_features /= media_features.norm(dim=-1, keepdim=True)
 
-        similarities = text_features.cpu().numpy() @ media_features.cpu().numpy().T
+        media_features_mlp = encode_method.model.audio_transform(media_features)
+        text_features_mlp = encode_method.model.text_transform(text_features)
+
+        sim_media_text = media_features.cpu().numpy() @ text_features_mlp.cpu().numpy().T
+        sim_mlp_media_text = media_features_mlp.cpu().numpy() @ text_features.cpu().numpy().T
+
+        similarities = (sim_media_text + sim_mlp_media_text) / 2
+
         mean_similarity = float(np.mean(similarities))
         best_idx = int(np.argmax(similarities))
         similarities = similarities.tolist()
