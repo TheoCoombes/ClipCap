@@ -60,7 +60,7 @@ def inference_demo(args: Namespace) -> int:
         sim_media_text = media_features.cpu().numpy() @ text_features_mlp.cpu().numpy().T
         sim_mlp_media_text = media_features_mlp.cpu().numpy() @ text_features.cpu().numpy().T
 
-        similarities = (sim_media_text + sim_mlp_media_text) / 2
+        similarities = ((sim_media_text + sim_mlp_media_text) / 2)[0]
 
         mean_similarity = float(np.mean(similarities))
         best_idx = int(np.argmax(similarities))
