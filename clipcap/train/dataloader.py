@@ -14,7 +14,7 @@ class EmbedDataset(IterableDataset):
     """
 
     def __init__(self, data_path: str = "./dataset/", language_model: str = "gpt2-xl", batch_size: int = 256,
-                 reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10) -> None:
+                 reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10, max_token_length: int = 64) -> None:
         super().__init__()
         self.tokenizer = get_tokenizer(language_model)
         self.eos_token_tensor = torch.tensor([self.tokenizer.eos_token_id])
@@ -22,7 +22,8 @@ class EmbedDataset(IterableDataset):
         self.batch_size = batch_size
         self.reader_max_piece_size = reader_max_piece_size
         self.reader_parallel_pieces = reader_parallel_pieces
-        
+        self.max_token_length = max_token_length
+
         if not data_path.endswith("/"):
             data_path += "/" # Keep string to allow s3 etc.
         
@@ -38,14 +39,14 @@ class EmbedDataset(IterableDataset):
 
         self.encoder_embedding_size = self.reader.dimension[-1]
     
-    def pad_tokens(self, tokens: List[int], max_token_length: int):
+    def pad_tokens(self, tokens: List[int]):
         tokens = torch.tensor(tokens)
-        padding = max_token_length - tokens.shape[0]
+        padding = self.max_token_length - tokens.shape[0]
 
         if padding > 0:
             tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1), dim=0)
         elif padding < 0:
-            tokens = torch.cat((tokens[:(max_token_length + 1)], self.eos_token_tensor))
+            tokens = torch.cat((tokens[:(self.max_token_length - 1)], self.eos_token_tensor))
         
         return tokens
     
@@ -58,10 +59,9 @@ class EmbedDataset(IterableDataset):
 
             captions = metadata["caption"].to_list()
             captions = [caption + self.tokenizer.eos_token for caption in captions]
-            tokens = self.tokenizer.batch_encode_plus(captions)["input_ids"]
 
-            max_token_length = max([len(sample) for sample in tokens])
-            tokens = torch.tensor([self.pad_tokens(sample, max_token_length) for sample in tokens])
+            tokens = self.tokenizer.batch_encode_plus(captions)["input_ids"]
+            tokens = torch.cat((self.pad_tokens(sample).unsqueeze(0) for sample in tokens), dim=0)
 
             yield tokens, batch
 
