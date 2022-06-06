@@ -57,7 +57,7 @@ class EmbedDataset(IterableDataset):
             batch = torch.from_numpy(batch)
 
             captions = metadata["caption"].to_list()
-            captions = [caption.replace(self.pad_string, ".") + self.tokenizer.eos_token for caption in captions]
+            captions = [caption + self.tokenizer.eos_token for caption in captions]
             tokens = self.tokenizer.batch_encode_plus(captions)["input_ids"]
 
             max_token_length = max([len(sample) for sample in tokens])
