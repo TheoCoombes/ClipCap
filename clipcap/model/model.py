@@ -100,7 +100,7 @@ class ClipCapModel(pl.LightningModule):
         tokens, embeds = batch
 
         # Create mask (with -1 pads)
-        mask = ~tokens.eq(0)
+        mask = tokens.ge(0)
         tokens[~mask] = 0
 
         outputs = self(tokens, embeds, mask)
