@@ -61,7 +61,7 @@ class EmbedDataset(IterableDataset):
             captions = [caption + self.tokenizer.eos_token for caption in captions]
 
             tokens = self.tokenizer.batch_encode_plus(captions)["input_ids"]
-            tokens = torch.cat((self.pad_tokens(sample).unsqueeze(0) for sample in tokens), dim=0)
+            tokens = torch.cat([self.pad_tokens(sample).unsqueeze(0) for sample in tokens], dim=0)
 
             yield tokens, batch
 
