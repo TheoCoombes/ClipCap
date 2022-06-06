@@ -35,7 +35,7 @@ def add_model_args(parser: ArgumentParser) -> ArgumentParser:
     model.add_argument(
         "--transformer-attention-heads",
         type=int,
-        default=16,
+        default=8,
         help="Number of attention heads in the mapping transformer.",
     )
     model.add_argument(
