@@ -61,7 +61,7 @@ class EmbedDataset(IterableDataset):
             tokens = self.tokenizer.batch_encode_plus(captions)["input_ids"]
 
             max_token_length = max([len(sample) for sample in tokens])
-            tokens = [self.pad_tokens(sample, max_token_length) for sample in tokens]
+            tokens = torch.tensor([self.pad_tokens(sample, max_token_length) for sample in tokens])
 
             yield tokens, batch
 
