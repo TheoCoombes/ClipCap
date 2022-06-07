@@ -17,7 +17,6 @@ class EmbedDataset(IterableDataset):
                  reader_max_piece_size: int = 50, reader_parallel_pieces: int = 10, max_token_length: int = 64) -> None:
         super().__init__()
         self.tokenizer = get_tokenizer(language_model)
-        self.eos_token_tensor = torch.tensor([self.tokenizer.eos_token_id])
 
         self.batch_size = batch_size
         self.reader_max_piece_size = reader_max_piece_size
@@ -37,7 +36,7 @@ class EmbedDataset(IterableDataset):
             meta_columns=['caption'],
         )
 
-        self.encoder_embedding_size = self.reader.dimension[-1]
+        self.encoder_embedding_size = self.reader.dimension #[-1]
     
     def pad_tokens(self, tokens: List[int]):
         tokens = torch.tensor(tokens)
@@ -46,7 +45,7 @@ class EmbedDataset(IterableDataset):
         if padding > 0:
             tokens = torch.cat((tokens, torch.zeros(padding, dtype=torch.int64) - 1), dim=0)
         elif padding < 0:
-            tokens = torch.cat((tokens[:(self.max_token_length - 1)], self.eos_token_tensor))
+            tokens = tokens[:self.max_token_length]
         
         return tokens
     
@@ -56,9 +55,7 @@ class EmbedDataset(IterableDataset):
             parallel_pieces=self.reader_parallel_pieces, show_progress=False
         ):
             batch = torch.from_numpy(batch)
-
             captions = metadata["caption"].to_list()
-            captions = [caption + self.tokenizer.eos_token for caption in captions]
 
             tokens = self.tokenizer.batch_encode_plus(captions)["input_ids"]
             tokens = torch.cat([self.pad_tokens(sample).unsqueeze(0) for sample in tokens], dim=0)
