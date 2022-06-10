@@ -14,7 +14,7 @@ def generate_nucleus_sampling(
     text_prefix_tokens: Optional[torch.Tensor] = None,
     entry_length: int = 67,
     top_p: float = 0.8,
-    top_k = None,
+    top_k: int = 0,
     temperature: float = 1.0
 ):
 
@@ -36,7 +36,7 @@ def generate_nucleus_sampling(
                 logits = outputs.logits
                 logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
 
-                if top_k is None:
+                if top_k == 0:
                     top_k = logits.shape[-1]
                 if top_p is None:
                     top_p = 1.0
