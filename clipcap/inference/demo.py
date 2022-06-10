@@ -55,9 +55,6 @@ def inference_demo(args: Namespace) -> int:
         text_features /= text_features.norm(dim=-1, keepdim=True)
         media_features /= media_features.norm(dim=-1, keepdim=True)
 
-        text_features_mlp /= text_features_mlp.norm(dim=-1, keepdim=True)
-        media_features_mlp /= media_features_mlp.norm(dim=-1, keepdim=True)
-
         a_logits_per_audio = (logit_scale_a * media_features @ text_features_mlp.t()).detach().cpu()
         t_logits_per_audio = (logit_scale_t * media_features_mlp @ text_features.t()).detach().cpu()
 

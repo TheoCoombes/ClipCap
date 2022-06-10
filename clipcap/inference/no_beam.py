@@ -21,7 +21,7 @@ def generate_no_beam(
     desired_sentence_length: int = 50,
     sentence_length_factor: float = 1.0,
 ):
-    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
+    stop_token = tokenizer.encode(".")[0]
     generations = []
 
     with torch.no_grad():
