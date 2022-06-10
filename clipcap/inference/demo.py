@@ -1,6 +1,8 @@
 from base64 import encode
 from clipcap.inference.args import add_inference_args
+
 from clipcap.inference.no_beam import generate_no_beam
+from clipcap.inference.nucleus_sampling import generate_nucleus_sampling
 
 from clipcap.encoders.base import get_encoder_from_model
 from clipcap.model.load import load
@@ -31,15 +33,15 @@ def inference_demo(args: Namespace) -> int:
         media_features = encode_method(sample)
         prefix = model.transformer_mapper(media_features)
 
-    captions = generate_no_beam(
+    captions = generate_nucleus_sampling(
         model, tokenizer, prefix,
         number_to_generate=args.number_to_generate,
         text_prefix_tokens=text_prefix_tokens,
         top_p=args.top_p,
         top_k=args.top_k,
         temperature=args.temperature,
-        repetition_penalty=args.repetition_penalty,
-        desired_sentence_length=args.desired_sentence_length,
+        # repetition_penalty=args.repetition_penalty,
+        # desired_sentence_length=args.desired_sentence_length,
     )
 
     caption_tokens = tokenize(captions).to(args.device)
