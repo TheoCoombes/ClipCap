@@ -18,7 +18,7 @@ def generate_nucleus_sampling(
     temperature: float = 1.0
 ):
 
-    stop_token = tokenizer.encode(tokenizer.eos_token)[0]
+    stop_token = tokenizer.encode(".")[0]
     tokens = None
     generations = []
 
