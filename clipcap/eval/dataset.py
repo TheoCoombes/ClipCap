@@ -18,5 +18,5 @@ class EvalDataset(object):
 
     def __iter__(self):
         for media_file in self.media_files:
-            data_tensor = self.sample_processor(media_file)
+            data_tensor = self.sample_processor(str(media_file))
             yield media_file.name, data_tensor
