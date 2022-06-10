@@ -48,7 +48,7 @@ def eval(args: Namespace) -> int:
             media_features = encode_method(sample)
             prefix = model.transformer_mapper(media_features)
 
-        sample = sample_processor(args.sample_path).unsqueeze(0).to(args.device)
+        sample = sample_processor(sample).unsqueeze(0).to(args.device)
 
         captions = generate_nucleus_sampling(
             model, tokenizer, prefix,
