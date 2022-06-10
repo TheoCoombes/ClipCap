@@ -4,7 +4,6 @@ from clipcap.inference.utils import top_k_top_p_filtering, sentence_length_penal
 
 from typing import Union, Callable, Optional
 import torch.nn.functional as nnf
-import random
 import torch
 
 

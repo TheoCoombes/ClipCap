@@ -1,6 +1,6 @@
 from clipcap.model.model import ClipCapModel, ClipCapModelPrefixOnly
 
-from clipcap.inference.base import *
+from clipcap.inference.no_beam import generate_no_beam
 
 from typing import Union, Callable, Optional
 import torch
@@ -31,13 +31,9 @@ def generate(
         prefix_projections = model.transformer_mapper(embeddings)
     
     inputs_embeds = torch.cat((prefix_projections, token_embeddings), dim=1)
-    attention_mask = torch.ones(inputs_embeds.shape[:2], dtype=torch.long)
-
-    # https://discuss.huggingface.co/t/how-to-generate-a-sequence-using-inputs-embeds-instead-of-input-ids/4145/3
-    decoder_input_ids = torch.ones((inputs_embeds.shape[0], 1), dtype=torch.long) * tokenizer.bos_token
 
     captions = generate_no_beam(
-        model, tokenizer, prefixes,
+        model, tokenizer, inputs_embeds,
         number_to_generate=number_to_generate,
         text_prefix_tokens=text_prefix_tokens,
         top_p=top_p,

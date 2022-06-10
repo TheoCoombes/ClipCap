@@ -52,7 +52,8 @@ def inference_demo(args: Namespace) -> int:
         text_features = encode_method.model.encode_text(caption_tokens)
         text_features /= text_features.norm(dim=-1, keepdim=True)
 
-        media_features /= media_features.norm(dim=-1, keepdim=True)
+        if not model.config.encoder_config.normalize_embeddings:
+            media_features /= media_features.norm(dim=-1, keepdim=True)
 
         media_features_mlp = encode_method.model.audio_transform(media_features)
         text_features_mlp = encode_method.model.text_transform(text_features)
