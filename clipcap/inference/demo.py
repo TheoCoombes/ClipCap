@@ -58,7 +58,7 @@ def inference_demo(args: Namespace) -> int:
         a_logits_per_audio = (logit_scale_a * media_features @ text_features_mlp.t()).detach().cpu()
         t_logits_per_audio = (logit_scale_t * media_features_mlp @ text_features.t()).detach().cpu()
 
-        similarities = ((a_logits_per_audio + t_logits_per_audio) / 2)[0]
+        similarities = ((a_logits_per_audio + t_logits_per_audio) / 2)[0].numpy()
 
         mean_similarity = float(np.mean(similarities))
         best_idx = int(np.argmax(similarities))
