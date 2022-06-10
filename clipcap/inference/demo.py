@@ -1,3 +1,4 @@
+from base64 import encode
 from clipcap.inference.args import add_inference_args
 from clipcap.inference.no_beam import generate_no_beam
 
@@ -49,19 +50,15 @@ def inference_demo(args: Namespace) -> int:
         if model.config.encoder_config.use_windowed_embeddings:
             media_features = media_features[0][0].unsqueeze(0)
         
-        text_features = encode_method.model.encode_text(caption_tokens)
+        media_features, text_features, media_features_mlp, text_features_mlp, logit_scale_a, logit_scale_t = encode_method.model(sample, caption_tokens)
+        
         text_features /= text_features.norm(dim=-1, keepdim=True)
+        media_features /= media_features.norm(dim=-1, keepdim=True)
 
-        if not model.config.encoder_config.normalize_embeddings:
-            media_features /= media_features.norm(dim=-1, keepdim=True)
+        a_logits_per_audio = (logit_scale_a * media_features @ text_features_mlp.t()).detach().cpu()
+        t_logits_per_audio = (logit_scale_t * media_features_mlp @ text_features.t()).detach().cpu()
 
-        media_features_mlp = encode_method.model.audio_transform(media_features)
-        text_features_mlp = encode_method.model.text_transform(text_features)
-
-        sim_media_text = media_features.cpu().numpy() @ text_features_mlp.cpu().numpy().T
-        sim_mlp_media_text = media_features_mlp.cpu().numpy() @ text_features.cpu().numpy().T
-
-        similarities = ((sim_media_text + sim_mlp_media_text) / 2)[0]
+        similarities = ((a_logits_per_audio + t_logits_per_audio) / 2)[0]
 
         mean_similarity = float(np.mean(similarities))
         best_idx = int(np.argmax(similarities))
