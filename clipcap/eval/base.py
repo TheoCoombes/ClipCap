@@ -1,7 +1,7 @@
 from clipcap.model.model import ClipCapModel, ClipCapModelPrefixOnly
 from clipcap.encoders.base import get_encoder_from_model
 from clipcap.inference.args import add_inference_args
-from clipcap.inference.base import generate_no_beam
+from clipcap.inference.nucleus_sampling import generate_nucleus_sampling
 from clipcap.model.load import load
 
 from clipcap.eval.args import add_eval_args
@@ -48,19 +48,34 @@ def eval(args: Namespace) -> int:
             media_features = encode_method(sample)
             prefix = model.transformer_mapper(media_features)
 
-        captions = generate_no_beam(
+        sample = sample_processor(args.sample_path).unsqueeze(0).to(args.device)
+
+        captions = generate_nucleus_sampling(
             model, tokenizer, prefix,
+            number_to_generate=args.number_to_generate,
+            text_prefix_tokens=None,
+            top_p=args.top_p,
+            top_k=args.top_k,
+            temperature=args.temperature,
+            # repetition_penalty=args.repetition_penalty,
+            # desired_sentence_length=args.desired_sentence_length,
         )
 
         caption_tokens = tokenize(captions).to(args.device)
 
         with torch.no_grad():
-            text_features = encode_method.model.encode_text(caption_tokens)
-
+            if model.config.encoder_config.use_windowed_embeddings:
+                media_features = media_features[0][0].unsqueeze(0)
+            
+            media_features, text_features, media_features_mlp, text_features_mlp, logit_scale_a, logit_scale_t = encode_method.model(sample, caption_tokens)
+            
             text_features /= text_features.norm(dim=-1, keepdim=True)
             media_features /= media_features.norm(dim=-1, keepdim=True)
 
-            similarities = text_features.cpu().numpy() @ media_features.cpu().numpy().T
+            a_logits_per_audio = (logit_scale_a * media_features @ text_features_mlp.t()).detach().cpu()
+            t_logits_per_audio = (logit_scale_t * media_features_mlp @ text_features.t()).detach().cpu()
+
+            similarities = ((a_logits_per_audio + t_logits_per_audio) / 2)[0].numpy()
         
         best_idx = int(np.argmax(similarities))
         caption = captions[best_idx]
