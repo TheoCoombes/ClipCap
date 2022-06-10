@@ -9,7 +9,7 @@ class EvalDataset(object):
     ):
         super().__init__()
 
-        folder = Path(folder)
+        folder = Path(folder).resolve()
         self.media_files = list(folder.glob("*"))
         self.sample_processor = sample_processor
 
