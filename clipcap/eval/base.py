@@ -90,9 +90,12 @@ def eval(args: Namespace) -> int:
         references_list.append(references)
         predictions_list.append(predictions[filename])
         ids.append(index)
+    
+    print(predictions_list)
+    print(references_list)
 
     scores = evaluate_metrics_from_lists(
-        predictions_list, references_list, ids
+        predictions_list, references_list
     )
 
     if args.save_file is not None:
