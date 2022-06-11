@@ -91,8 +91,8 @@ def eval(args: Namespace) -> int:
         predictions_list.append(predictions[filename])
         ids.append(index)
     
-    print(predictions_list)
-    print(references_list)
+    print(predictions_list[0])
+    print(references_list[0])
 
     scores = evaluate_metrics_from_lists(
         predictions_list, references_list
