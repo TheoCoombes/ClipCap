@@ -58,7 +58,7 @@ class Meteor:
         hypothesis_str = hypothesis_str.replace('|||','').replace('  ',' ')
         score_line = ' ||| '.join(('SCORE', ' ||| '.join(reference_list), hypothesis_str))
         self.meteor_p.stdin.write('{}\n'.format(score_line).encode())
-        print(self.meteor_p.stderr, self.meteor_p.stdout)
+        print(self.meteor_p.stderr.read(), self.meteor_p.stdout.read())
         self.meteor_p.stdin.flush()
         return self.meteor_p.stdout.readline().decode().strip()
 
