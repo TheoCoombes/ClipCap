@@ -17,7 +17,6 @@ if __name__ == "__main__":
         name="ClipCap",
         packages=find_packages(),
         include_package_data=True,
-        package_dir={'clipcap': '.'},
         package_data={'': ['*.jar', '*.gz', '*.mdb']},
         version="1.0.0",
         license="MIT",
