@@ -42,6 +42,7 @@ class Meteor:
             eval_line += ' ||| {}'.format(stat)
 
         self.meteor_p.stdin.write('{}\n'.format(eval_line).encode())
+        print(self.meteor_p.stderr, self.meteor_p.stdout)
         self.meteor_p.stdin.flush()
         for i in range(0,len(imgIds)):
             scores.append(float(self.meteor_p.stdout.readline().strip()))
@@ -81,6 +82,6 @@ class Meteor:
     def __del__(self):
         self.lock.acquire()
         self.meteor_p.stdin.close()
-        #self.meteor_p.kill()
+        self.meteor_p.kill()
         self.meteor_p.wait()
         self.lock.release()
