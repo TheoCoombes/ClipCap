@@ -128,7 +128,7 @@ class CLAPModel(nn.Module):
 
         return out
 
-def get_clap_encoder(*_, normalize_embeddings: bool = False, device: str = "cuda") -> Tuple[Callable, Callable]:
+def get_clap_encoder(normalize_embeddings: bool = False, device: str = "cuda") -> Tuple[Callable, Callable]:
     import laion_clap
     
     model_id = int(model_id)
