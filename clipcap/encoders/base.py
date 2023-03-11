@@ -11,16 +11,15 @@ def get_encoder(encoder_model_name: str, encoder_model_variant: str, normalize_e
                 use_windowed_embeddings: bool = False, window_overlap_percentage: float = 0.0, device: str = "cuda") -> Tuple[Module, Callable]:
     kwargs = {
         "normalize_embeddings": normalize_embeddings,
-        "use_windowed_embeddings": use_windowed_embeddings,
-        "window_size": window_size,
-        "window_overlap_percentage": window_overlap_percentage,
         "device": device
     }
 
     if encoder_model_name == "clip":
-        return get_clip_encoder(encoder_model_variant, **kwargs)
+        return get_clip_encoder(encoder_model_variant, use_windowed_embeddings=use_windowed_embeddings,
+                                window_size=window_size, window_overlap_percentage=window_overlap_percentage,
+                                **kwargs)
     elif encoder_model_name == "clap":
-        return get_clap_encoder(encoder_model_variant, **kwargs)
+        return get_clap_encoder(**kwargs)
     else:
         # Feel free to raise an issue / PR if your desired model is not supported
         raise ValueError(f"invalid encoder name: '{encoder_model_name}'")
