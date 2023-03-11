@@ -108,7 +108,7 @@ class CLAPModel(nn.Module):
         self.model = model
         self.normalize_embeddings = normalize_embeddings
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: np.ndarray) -> torch.Tensor:
         # 'Hack' to retain tiled patch inputs in the same batch in CLIP.
 #         original_shape = x.shape
         
@@ -117,7 +117,8 @@ class CLAPModel(nn.Module):
 #             x = torch.flatten(x, start_dim=0, end_dim=1)
         
         out = self.model.get_audio_embedding_from_data(x=x)
-
+        out = torch.from_numpy(out)
+        
         if self.normalize_embeddings:
             out /= out.norm(dim=-1, keepdim=True)
         
