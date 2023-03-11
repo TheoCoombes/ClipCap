@@ -49,5 +49,4 @@ python3.8 -m clipcap.preprocess \
     --wds-caption-key "json/text"
     --wds-samples-per-file 512
     --encoder-model-name "clap"
-    --encoder-model-variant "./clap/pretrained.pt"
 ```
