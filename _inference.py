@@ -449,7 +449,7 @@ def _shutterstock_demo(
         else:
             model = CLIPCaptionModel(language_model, **model_kwargs)
         
-        model.load_state_dict(torch.load(checkpoint_path))
+        model.load_state_dict(torch.load(checkpoint_path, weights_only=True))
     
     model = model.to(device)
     model = model.eval()

@@ -26,7 +26,7 @@ def load(model_path: str, config_path: str, device: str = "cpu",
     model = model_cls(config)
 
     # Load state dict.
-    state_dict = torch.load(model_path, map_location="cpu")
+    state_dict = torch.load(model_path, map_location="cpu", weights_only=True)
 
     if from_checkpoint:
         state_dict = state_dict["state_dict"]
